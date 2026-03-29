@@ -1,0 +1,16 @@
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "inv-mng"
+resolve_s3 = true
+s3_prefix = "inv-mng"
+region = "us-east-1"
+profile = "personal"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+disable_rollback = true
+parameter_overrides = "MongoDbUri=\"mongodb+srv://uzairriazpk_db_user:WbXwWxvoLqtfphxK@cluster0.mtzsv6o.mongodb.net/inventory_management_prod\" JwtExpiresIn=\"7d\" SuperadminEmail=\"superadmin@pakas.com\" SuperadminName=\"Super Admin\" ClientOrigin=\"*\""
+image_repositories = []
+
+[default.global.parameters]
+region = "us-east-1"

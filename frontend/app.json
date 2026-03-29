@@ -19,6 +19,12 @@
     },
     "android": {
       "package": "com.uzairriaz.inventorymanagement"
+    },
+    "ios": {
+      "bundleIdentifier": "com.uzairriaz.inventorymanagement",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     }
   }
 }

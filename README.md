@@ -28,6 +28,33 @@ Required environment variables (`backend/.env`):
 
 At startup, backend auto-creates default superadmin if it does not exist.
 
+## Backend deployment (AWS Lambda with SAM)
+
+From the backend folder:
+
+```bash
+cd backend
+sam build
+sam deploy --guided \
+	--parameter-overrides \
+		MongoDbUri='<your-mongodb-uri>' \
+		JwtSecret='<your-jwt-secret>' \
+		JwtExpiresIn='7d' \
+		SuperadminEmail='<optional>' \
+		SuperadminPassword='<optional>' \
+		SuperadminName='Super Admin' \
+		ClientOrigin='*'
+```
+
+Local SAM testing:
+
+```bash
+cd backend
+sam local start-api --parameter-overrides \
+	MongoDbUri='<your-mongodb-uri>' \
+	JwtSecret='<your-jwt-secret>'
+```
+
 ## Frontend setup
 
 ```bash
@@ -39,6 +66,18 @@ npm run start
 
 Set API URL:
 - `EXPO_PUBLIC_API_URL=http://localhost:5000`
+
+## Web app setup
+
+```bash
+cd web
+cp .env.example .env
+npm install
+npm run start
+```
+
+Set API URL:
+- `REACT_APP_API_URL=http://localhost:5000`
 
 ## Authentication APIs
 - `POST /api/auth/superadmin/login`

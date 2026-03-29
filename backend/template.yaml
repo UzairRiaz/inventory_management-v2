@@ -1,0 +1,83 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Inventory management backend (Express on Lambda)
+
+Parameters:
+  MongoDbUri:
+    Type: String
+    Description: MongoDB connection string
+  JwtSecret:
+    Type: String
+    NoEcho: true
+    Description: JWT secret
+  JwtExpiresIn:
+    Type: String
+    Default: 7d
+  SuperadminEmail:
+    Type: String
+    Default: ''
+  SuperadminPassword:
+    Type: String
+    NoEcho: true
+    Default: ''
+  SuperadminName:
+    Type: String
+    Default: Super Admin
+  ClientOrigin:
+    Type: String
+    Default: '*'
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    Timeout: 30
+    MemorySize: 512
+    Environment:
+      Variables:
+        NODE_ENV: production
+
+Resources:
+  ApiGateway:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: $default
+      CorsConfiguration:
+        AllowOrigins:
+          - '*'
+        AllowHeaders:
+          - '*'
+        AllowMethods:
+          - '*'
+
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: src/lambda.handler
+      Environment:
+        Variables:
+          MONGODB_URI: !Ref MongoDbUri
+          JWT_SECRET: !Ref JwtSecret
+          JWT_EXPIRES_IN: !Ref JwtExpiresIn
+          SUPERADMIN_EMAIL: !Ref SuperadminEmail
+          SUPERADMIN_PASSWORD: !Ref SuperadminPassword
+          SUPERADMIN_NAME: !Ref SuperadminName
+          CLIENT_ORIGIN: !Ref ClientOrigin
+      Events:
+        ApiRoot:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ApiGateway
+            Path: /
+            Method: ANY
+        ApiProxy:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref ApiGateway
+            Path: /{proxy+}
+            Method: ANY
+
+Outputs:
+  ApiUrl:
+    Description: API Gateway endpoint URL
+    Value: !Sub 'https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com'
