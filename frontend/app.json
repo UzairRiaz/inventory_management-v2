@@ -4,9 +4,21 @@
     "slug": "inventory-management",
     "version": "1.0.0",
     "orientation": "portrait",
-    "platforms": ["ios", "android", "web"],
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
     "web": {
       "bundler": "metro"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "a08e3bae-9f33-403e-a95d-1ea09ae42180"
+      }
+    },
+    "android": {
+      "package": "com.uzairriaz.inventorymanagement"
     }
   }
 }

@@ -15,8 +15,8 @@ services:
       - "5000:5000"
     env_file:
       - ./backend/.env
-    environment:
-      MONGODB_URI: mongodb://mongo:27017/inventory_management
+    # environment:
+    #   MONGODB_URI: mongodb://mongo:27017/inventory_management
     # depends_on:
     #   - mongo
 
