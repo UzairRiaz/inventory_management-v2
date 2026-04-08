@@ -8,6 +8,7 @@ import { RecordList, Screen, Section, styles } from '../../../components/ui';
 export default function CustomersSetupScreen({ navigation }) {
   const { token, user } = useAuth();
   const [customers, setCustomers] = useState([]);
+  const [editingCustomer, setEditingCustomer] = useState(null);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -25,6 +26,24 @@ export default function CustomersSetupScreen({ navigation }) {
     }
   }, [token]);
 
+  const clearForm = () => {
+    setEditingCustomer(null);
+    setName('');
+    setPhone('');
+    setEmail('');
+    setAddress('');
+    setOpeningBalance('');
+  };
+
+  const startEdit = (customer) => {
+    setEditingCustomer(customer);
+    setName(customer.name || '');
+    setPhone(customer.phone || '');
+    setEmail(customer.email || '');
+    setAddress(customer.address || '');
+    setOpeningBalance('');
+  };
+
   const createCustomer = async () => {
     try {
       if (!name) {
@@ -33,11 +52,21 @@ export default function CustomersSetupScreen({ navigation }) {
       }
 
       await api.createCustomer(token, { name, phone, email, address, openingBalance: Number(openingBalance || 0) });
-      setName('');
-      setPhone('');
-      setEmail('');
-      setAddress('');
-      setOpeningBalance('');
+      clearForm();
+      await loadCustomers();
+    } catch (error) {
+      Alert.alert('Error', error.message);
+    }
+  };
+
+  const saveEdit = async () => {
+    try {
+      if (!name) {
+        Alert.alert('Validation', 'Customer name is required');
+        return;
+      }
+      await api.updateCustomer(token, editingCustomer._id, { name, phone, email, address });
+      clearForm();
       await loadCustomers();
     } catch (error) {
       Alert.alert('Error', error.message);
@@ -55,6 +84,9 @@ export default function CustomersSetupScreen({ navigation }) {
       <Section title="Customers" icon="person-outline">
         {canManageCustomers ? (
           <>
+            {editingCustomer && (
+              <Text style={styles.metaText}>Editing: {editingCustomer.name}</Text>
+            )}
             <Text style={styles.fieldLabel}>Name</Text>
             <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Customer name" />
             <Text style={styles.fieldLabel}>Phone</Text>
@@ -63,15 +95,27 @@ export default function CustomersSetupScreen({ navigation }) {
             <TextInput style={styles.input} value={email} onChangeText={setEmail} placeholder="Email" autoCapitalize="none" />
             <Text style={styles.fieldLabel}>Address</Text>
             <TextInput style={styles.input} value={address} onChangeText={setAddress} placeholder="Address" />
-            <Text style={styles.fieldLabel}>Initial Outstanding</Text>
-            <TextInput
-              style={styles.input}
-              value={openingBalance}
-              onChangeText={setOpeningBalance}
-              placeholder="Opening balance"
-              keyboardType="numeric"
-            />
-            <Button title="Create Customer" onPress={createCustomer} color="#1d4ed8" />
+            {!editingCustomer && (
+              <>
+                <Text style={styles.fieldLabel}>Initial Outstanding</Text>
+                <TextInput
+                  style={styles.input}
+                  value={openingBalance}
+                  onChangeText={setOpeningBalance}
+                  placeholder="Opening balance"
+                  keyboardType="numeric"
+                />
+              </>
+            )}
+            {editingCustomer ? (
+              <View style={{ gap: 8 }}>
+                <Button title="Save Changes" onPress={saveEdit} color="#1d4ed8" />
+                <View style={styles.spacer} />
+                <Button title="Cancel" onPress={clearForm} color="#6b7280" />
+              </View>
+            ) : (
+              <Button title="Create Customer" onPress={createCustomer} color="#1d4ed8" />
+            )}
             <View style={styles.spacer} />
           </>
         ) : (
@@ -87,12 +131,13 @@ export default function CustomersSetupScreen({ navigation }) {
             { key: 'email', title: 'Email' },
             { key: 'openingBalance', title: 'Outstanding' },
           ]}
-          onRowPress={(item) =>
-            navigation.navigate('RowDetail', {
-              title: 'Customer Details',
-              details: item,
-            })
-          }
+          onRowPress={(item) => {
+            if (canManageCustomers) {
+              startEdit(item);
+            } else {
+              navigation.navigate('RowDetail', { title: 'Customer Details', details: item });
+            }
+          }}
         />
       </Section>
     </Screen>

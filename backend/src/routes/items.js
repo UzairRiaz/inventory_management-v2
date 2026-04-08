@@ -48,4 +48,39 @@ router.post('/', requireRoles('admin', 'manager'), async (req, res, next) => {
   }
 });
 
+router.put('/:id', requireRoles('admin', 'manager'), async (req, res, next) => {
+  try {
+    const item = await Item.findOneAndUpdate(
+      withTenantFilter(req, { _id: req.params.id }),
+      {
+        $set: {
+          ...(req.body.name !== undefined && { name: req.body.name }),
+          ...(req.body.sku !== undefined && { sku: req.body.sku }),
+          ...(req.body.tags !== undefined && {
+            tags: Array.isArray(req.body.tags)
+              ? req.body.tags
+              : String(req.body.tags)
+                  .split(',')
+                  .map((t) => t.trim())
+                  .filter(Boolean),
+          }),
+          ...(req.body.manufacturingPrice !== undefined && { manufacturingPrice: Number(req.body.manufacturingPrice) }),
+          ...(req.body.sellingPrice !== undefined && { sellingPrice: Number(req.body.sellingPrice) }),
+        },
+      },
+      { new: true },
+    );
+
+    if (!item) {
+      return res.status(404).json({ message: 'Item not found' });
+    }
+
+    await logActivity(req, 'ITEM_UPDATE', 'Item', item._id, { name: item.name });
+
+    res.json(item);
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;

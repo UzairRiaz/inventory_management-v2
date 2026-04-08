@@ -8,6 +8,7 @@ import { RecordList, Screen, Section, styles } from '../../../components/ui';
 export default function ItemsSetupScreen({ navigation }) {
   const { token, user } = useAuth();
   const [items, setItems] = useState([]);
+  const [editingItem, setEditingItem] = useState(null);
   const [itemName, setItemName] = useState('');
   const [itemTags, setItemTags] = useState('');
   const [manufacturingPrice, setManufacturingPrice] = useState('');
@@ -23,6 +24,22 @@ export default function ItemsSetupScreen({ navigation }) {
     }
   }, [token]);
 
+  const clearForm = () => {
+    setEditingItem(null);
+    setItemName('');
+    setItemTags('');
+    setManufacturingPrice('');
+    setSellingPrice('');
+  };
+
+  const startEdit = (item) => {
+    setEditingItem(item);
+    setItemName(item.name || '');
+    setItemTags(Array.isArray(item.tags) ? item.tags.join(', ') : (item.tags || ''));
+    setManufacturingPrice(item.manufacturingPrice != null ? String(item.manufacturingPrice) : '');
+    setSellingPrice(item.sellingPrice != null ? String(item.sellingPrice) : '');
+  };
+
   const createItem = async () => {
     try {
       await api.createItem(token, {
@@ -31,10 +48,22 @@ export default function ItemsSetupScreen({ navigation }) {
         manufacturingPrice: Number(manufacturingPrice || 0),
         sellingPrice: Number(sellingPrice || 0),
       });
-      setItemName('');
-      setItemTags('');
-      setManufacturingPrice('');
-      setSellingPrice('');
+      clearForm();
+      await loadItems();
+    } catch (error) {
+      Alert.alert('Error', error.message);
+    }
+  };
+
+  const saveEdit = async () => {
+    try {
+      await api.updateItem(token, editingItem._id, {
+        name: itemName,
+        tags: itemTags,
+        manufacturingPrice: Number(manufacturingPrice || 0),
+        sellingPrice: Number(sellingPrice || 0),
+      });
+      clearForm();
       await loadItems();
     } catch (error) {
       Alert.alert('Error', error.message);
@@ -52,6 +81,9 @@ export default function ItemsSetupScreen({ navigation }) {
       <Section title="Item Management" icon="pricetag-outline">
         {canManageItems ? (
           <>
+            {editingItem && (
+              <Text style={styles.metaText}>Editing: {editingItem.name}</Text>
+            )}
             <Text style={styles.fieldLabel}>Item Name</Text>
             <TextInput style={styles.input} value={itemName} onChangeText={setItemName} placeholder="Item name" />
             <Text style={styles.fieldLabel}>Tags</Text>
@@ -60,7 +92,15 @@ export default function ItemsSetupScreen({ navigation }) {
             <TextInput style={styles.input} value={manufacturingPrice} onChangeText={setManufacturingPrice} placeholder="Manufacturing price" keyboardType="numeric" />
             <Text style={styles.fieldLabel}>Selling Price</Text>
             <TextInput style={styles.input} value={sellingPrice} onChangeText={setSellingPrice} placeholder="Selling price" keyboardType="numeric" />
-            <Button title="Create Item" onPress={createItem} color="#2563eb" />
+            {editingItem ? (
+              <View style={{ gap: 8 }}>
+                <Button title="Save Changes" onPress={saveEdit} color="#2563eb" />
+                <View style={styles.spacer} />
+                <Button title="Cancel" onPress={clearForm} color="#6b7280" />
+              </View>
+            ) : (
+              <Button title="Create Item" onPress={createItem} color="#2563eb" />
+            )}
             <View style={styles.spacer} />
           </>
         ) : (
@@ -74,12 +114,13 @@ export default function ItemsSetupScreen({ navigation }) {
             { key: 'manufacturingPrice', title: 'MFG Price' },
             { key: 'sellingPrice', title: 'Sell Price' },
           ]}
-          onRowPress={(item) =>
-            navigation.navigate('RowDetail', {
-              title: 'Item Details',
-              details: item,
-            })
-          }
+          onRowPress={(item) => {
+            if (canManageItems) {
+              startEdit(item);
+            } else {
+              navigation.navigate('RowDetail', { title: 'Item Details', details: item });
+            }
+          }}
         />
       </Section>
     </Screen>

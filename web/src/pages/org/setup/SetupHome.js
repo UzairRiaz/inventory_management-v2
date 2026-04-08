@@ -11,9 +11,10 @@ export default function SetupHome() {
         <div className="actions-row">
           <button className="btn" onClick={() => navigate('/org/setup/warehouses')}>Warehouse Management</button>
           <button className="btn" onClick={() => navigate('/org/setup/items')}>Item Management</button>
-          <button className="btn secondary" onClick={() => navigate('/org/setup/notes')}>Notes</button>
-          <button className="btn" onClick={() => navigate('/org/setup/users')}>Users</button>
           <button className="btn" onClick={() => navigate('/org/setup/customers')}>Customers</button>
+          <button className="btn" onClick={() => navigate('/org/setup/users')}>Users</button>
+          <button className="btn secondary" onClick={() => navigate('/org/ledger')}>Ledger</button>
+          <button className="btn secondary" onClick={() => navigate('/org/setup/notes')}>Notes</button>
           <button className="btn warning" onClick={() => navigate('/org/setup/profit')}>Profit</button>
           <button className="btn ghost" onClick={() => navigate('/org/setup/activity')}>Activity Log</button>
         </div>

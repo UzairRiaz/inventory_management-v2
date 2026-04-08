@@ -65,6 +65,33 @@ router.post('/', requireRoles('admin', 'manager'), async (req, res, next) => {
   }
 });
 
+router.put('/:customerId', requireRoles('admin', 'manager'), async (req, res, next) => {
+  try {
+    const customer = await Customer.findOneAndUpdate(
+      withTenantFilter(req, { _id: req.params.customerId }),
+      {
+        $set: {
+          ...(req.body.name !== undefined && { name: req.body.name }),
+          ...(req.body.phone !== undefined && { phone: req.body.phone }),
+          ...(req.body.email !== undefined && { email: req.body.email }),
+          ...(req.body.address !== undefined && { address: req.body.address }),
+        },
+      },
+      { new: true },
+    );
+
+    if (!customer) {
+      return res.status(404).json({ message: 'Customer not found' });
+    }
+
+    await logActivity(req, 'CUSTOMER_UPDATE', 'Customer', customer._id, { name: customer.name });
+
+    res.json(customer);
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.post('/:customerId/payments', requireRoles('admin', 'manager', 'staff'), async (req, res, next) => {
   try {
     const organization = new mongoose.Types.ObjectId(req.tenant.organizationId);

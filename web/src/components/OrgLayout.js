@@ -33,6 +33,14 @@ const IconBook = (props) => (
     <path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v19" />
   </svg>
 );
+const IconTruck = (props) => (
+  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <rect x="1" y="3" width="15" height="13" rx="1" />
+    <path d="M16 8h4l3 3v5h-7V8z" />
+    <circle cx="5.5" cy="18.5" r="2.5" />
+    <circle cx="18.5" cy="18.5" r="2.5" />
+  </svg>
+);
 const IconSettings = (props) => (
   <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" {...props}>
     <path d="M19.14 12.94a1.5 1.5 0 000-1.88l2.03-1.58a.5.5 0 00.12-.64l-1.92-3.32a.5.5 0 00-.6-.22l-2.39.96c-.5-.32-1.04-.59-1.6-.8l-.36-2.54A.5.5 0 0013.7 2h-3.4a.5.5 0 00-.5.42l-.36 2.54c-.56.21-1.1.48-1.6.8l-2.39-.96a.5.5 0 00-.6.22L2.71 9.84a.5.5 0 00.12.64L4.86 12a1.5 1.5 0 000 1.88L2.83 15.46a.5.5 0 00-.12.64l1.92 3.32c.14.24.42.34.66.24l2.39-.96c.5.32 1.04.59 1.6.8l.36 2.54c.04.28.28.42.5.42h3.4c.22 0 .46-.14.5-.42l.36-2.54c.56-.21 1.1-.48 1.6-.8l2.39.96c.24.1.52 0 .66-.24l1.92-3.32a.5.5 0 00-.12-.64L19.14 12.94z" />
@@ -43,9 +51,9 @@ const IconSettings = (props) => (
 const tabs = [
   { label: 'Home', path: '/org/home', icon: IconHome },
   { label: 'Inventory', path: '/org/inventory', icon: IconBox },
+  { label: 'Purchase', path: '/org/purchase', icon: IconTruck },
   { label: 'Sales', path: '/org/sales', icon: IconCart },
   { label: 'Payments', path: '/org/payments', icon: IconDollar },
-  { label: 'Ledger', path: '/org/ledger', icon: IconBook },
   { label: 'Setup', path: '/org/setup', icon: IconSettings },
 ];
 

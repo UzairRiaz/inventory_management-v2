@@ -8,6 +8,7 @@ export default function ItemsSetup() {
   const { token, user } = useAuth();
   const navigate = useNavigate();
   const [items, setItems] = useState([]);
+  const [editingItem, setEditingItem] = useState(null);
   const [itemName, setItemName] = useState('');
   const [itemTags, setItemTags] = useState('');
   const [manufacturingPrice, setManufacturingPrice] = useState('');
@@ -25,6 +26,22 @@ export default function ItemsSetup() {
     }
   }, [token]);
 
+  const clearForm = () => {
+    setEditingItem(null);
+    setItemName('');
+    setItemTags('');
+    setManufacturingPrice('');
+    setSellingPrice('');
+  };
+
+  const startEdit = (item) => {
+    setEditingItem(item);
+    setItemName(item.name || '');
+    setItemTags(Array.isArray(item.tags) ? item.tags.join(', ') : (item.tags || ''));
+    setManufacturingPrice(item.manufacturingPrice != null ? String(item.manufacturingPrice) : '');
+    setSellingPrice(item.sellingPrice != null ? String(item.sellingPrice) : '');
+  };
+
   const createItem = async () => {
     try {
       await api.createItem(token, {
@@ -33,10 +50,22 @@ export default function ItemsSetup() {
         manufacturingPrice: Number(manufacturingPrice || 0),
         sellingPrice: Number(sellingPrice || 0),
       });
-      setItemName('');
-      setItemTags('');
-      setManufacturingPrice('');
-      setSellingPrice('');
+      clearForm();
+      await loadItems();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const saveEdit = async () => {
+    try {
+      await api.updateItem(token, editingItem._id, {
+        name: itemName,
+        tags: itemTags,
+        manufacturingPrice: Number(manufacturingPrice || 0),
+        sellingPrice: Number(sellingPrice || 0),
+      });
+      clearForm();
       await loadItems();
     } catch (err) {
       setError(err.message);
@@ -52,6 +81,11 @@ export default function ItemsSetup() {
       <Section title="Item Management" icon="ITM">
         {canManageItems ? (
           <>
+            {editingItem && (
+              <div className="meta-text" style={{ marginBottom: 4 }}>
+                Editing: <strong>{editingItem.name}</strong>
+              </div>
+            )}
             <label className="field-label">Item Name</label>
             <input className="input" value={itemName} onChange={(e) => setItemName(e.target.value)} placeholder="Item name" />
             <label className="field-label">Tags</label>
@@ -61,7 +95,14 @@ export default function ItemsSetup() {
             <label className="field-label">Selling Price</label>
             <input className="input" value={sellingPrice} onChange={(e) => setSellingPrice(e.target.value)} placeholder="Selling price" />
             <div className="actions-row">
-              <button className="btn" onClick={createItem}>Create Item</button>
+              {editingItem ? (
+                <>
+                  <button className="btn" onClick={saveEdit}>Save Changes</button>
+                  <button className="btn ghost" onClick={clearForm}>Cancel</button>
+                </>
+              ) : (
+                <button className="btn" onClick={createItem}>Create Item</button>
+              )}
             </div>
           </>
         ) : (
@@ -76,14 +117,13 @@ export default function ItemsSetup() {
             { key: 'manufacturingPrice', title: 'MFG Price' },
             { key: 'sellingPrice', title: 'Sell Price' },
           ]}
-          onRowPress={(item) =>
-            navigate('/org/detail', {
-              state: {
-                title: 'Item Details',
-                details: item,
-              },
-            })
-          }
+          onRowPress={(item) => {
+            if (canManageItems) {
+              startEdit(item);
+            } else {
+              navigate('/org/detail', { state: { title: 'Item Details', details: item } });
+            }
+          }}
         />
       </Section>
     </Screen>

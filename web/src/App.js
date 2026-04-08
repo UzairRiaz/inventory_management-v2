@@ -18,6 +18,7 @@ import Ledger from './pages/org/Ledger';
 import LedgerCreate from './pages/org/LedgerCreate';
 import Profit from './pages/org/Profit';
 import CustomerSales from './pages/org/CustomerSales';
+import Purchase from './pages/org/Purchase';
 import SetupHome from './pages/org/setup/SetupHome';
 import WarehouseSetup from './pages/org/setup/WarehouseSetup';
 import ItemsSetup from './pages/org/setup/ItemsSetup';
@@ -113,6 +114,7 @@ function AppRoutes() {
         <Route path="payments/new" element={<PaymentsCreate />} />
         <Route path="ledger" element={<Ledger />} />
         <Route path="ledger/new" element={<LedgerCreate />} />
+        <Route path="purchase" element={<Purchase />} />
         <Route path="setup" element={<SetupHome />} />
         <Route path="setup/warehouses" element={<WarehouseSetup />} />
         <Route path="setup/items" element={<ItemsSetup />} />

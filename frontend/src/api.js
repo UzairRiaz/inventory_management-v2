@@ -42,9 +42,11 @@ export const api = {
 
   getItems: (token) => request('/api/items', {}, token),
   createItem: (token, payload) => request('/api/items', { method: 'POST', body: JSON.stringify(payload) }, token),
+  updateItem: (token, itemId, payload) => request(`/api/items/${itemId}`, { method: 'PUT', body: JSON.stringify(payload) }, token),
 
   getCustomers: (token) => request('/api/customers', {}, token),
   createCustomer: (token, payload) => request('/api/customers', { method: 'POST', body: JSON.stringify(payload) }, token),
+  updateCustomer: (token, customerId, payload) => request(`/api/customers/${customerId}`, { method: 'PUT', body: JSON.stringify(payload) }, token),
   getCustomerPayments: (token) => request('/api/customers/payments', {}, token),
   receiveCustomerPayment: (token, customerId, payload) =>
     request(`/api/customers/${customerId}/payments`, { method: 'POST', body: JSON.stringify(payload) }, token),

@@ -8,6 +8,7 @@ export default function CustomersSetup() {
   const { token, user } = useAuth();
   const navigate = useNavigate();
   const [customers, setCustomers] = useState([]);
+  const [editingCustomer, setEditingCustomer] = useState(null);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -27,6 +28,24 @@ export default function CustomersSetup() {
     }
   }, [token]);
 
+  const clearForm = () => {
+    setEditingCustomer(null);
+    setName('');
+    setPhone('');
+    setEmail('');
+    setAddress('');
+    setOpeningBalance('');
+  };
+
+  const startEdit = (customer) => {
+    setEditingCustomer(customer);
+    setName(customer.name || '');
+    setPhone(customer.phone || '');
+    setEmail(customer.email || '');
+    setAddress(customer.address || '');
+    setOpeningBalance('');
+  };
+
   const createCustomer = async () => {
     try {
       if (!name) {
@@ -35,11 +54,21 @@ export default function CustomersSetup() {
       }
 
       await api.createCustomer(token, { name, phone, email, address, openingBalance: Number(openingBalance || 0) });
-      setName('');
-      setPhone('');
-      setEmail('');
-      setAddress('');
-      setOpeningBalance('');
+      clearForm();
+      await loadCustomers();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const saveEdit = async () => {
+    try {
+      if (!name) {
+        setError('Customer name is required');
+        return;
+      }
+      await api.updateCustomer(token, editingCustomer._id, { name, phone, email, address });
+      clearForm();
       await loadCustomers();
     } catch (err) {
       setError(err.message);
@@ -55,6 +84,11 @@ export default function CustomersSetup() {
       <Section title="Customers" icon="CST">
         {canManageCustomers ? (
           <>
+            {editingCustomer && (
+              <div className="meta-text" style={{ marginBottom: 4 }}>
+                Editing: <strong>{editingCustomer.name}</strong>
+              </div>
+            )}
             <label className="field-label">Name</label>
             <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Customer name" />
             <label className="field-label">Phone</label>
@@ -63,15 +97,26 @@ export default function CustomersSetup() {
             <input className="input" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" />
             <label className="field-label">Address</label>
             <input className="input" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Address" />
-            <label className="field-label">Initial Outstanding</label>
-            <input
-              className="input"
-              value={openingBalance}
-              onChange={(e) => setOpeningBalance(e.target.value)}
-              placeholder="Opening balance"
-            />
+            {!editingCustomer && (
+              <>
+                <label className="field-label">Initial Outstanding</label>
+                <input
+                  className="input"
+                  value={openingBalance}
+                  onChange={(e) => setOpeningBalance(e.target.value)}
+                  placeholder="Opening balance"
+                />
+              </>
+            )}
             <div className="actions-row">
-              <button className="btn" onClick={createCustomer}>Create Customer</button>
+              {editingCustomer ? (
+                <>
+                  <button className="btn" onClick={saveEdit}>Save Changes</button>
+                  <button className="btn ghost" onClick={clearForm}>Cancel</button>
+                </>
+              ) : (
+                <button className="btn" onClick={createCustomer}>Create Customer</button>
+              )}
             </div>
           </>
         ) : (
@@ -87,14 +132,13 @@ export default function CustomersSetup() {
             { key: 'email', title: 'Email' },
             { key: 'openingBalance', title: 'Outstanding' },
           ]}
-          onRowPress={(item) =>
-            navigate('/org/detail', {
-              state: {
-                title: 'Customer Details',
-                details: item,
-              },
-            })
-          }
+          onRowPress={(item) => {
+            if (canManageCustomers) {
+              startEdit(item);
+            } else {
+              navigate('/org/detail', { state: { title: 'Customer Details', details: item } });
+            }
+          }}
         />
       </Section>
     </Screen>

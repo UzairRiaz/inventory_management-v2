@@ -29,7 +29,7 @@ router.get('/', requireRoles('admin', 'manager', 'staff'), async (req, res, next
 
 router.post('/adjust', requireRoles('admin', 'manager', 'staff'), async (req, res, next) => {
   try {
-    const { warehouseId, itemId, quantity, type } = req.body;
+    const { warehouseId, itemId, quantity, type, manufacturingPrice } = req.body;
     const qty = Number(quantity || 0);
 
     if (!warehouseId || !itemId || qty <= 0 || !['IN', 'OUT'].includes(type)) {
@@ -45,6 +45,15 @@ router.post('/adjust', requireRoles('admin', 'manager', 'staff'), async (req, re
 
     if (!warehouse || !item) {
       return res.status(404).json({ message: 'Warehouse or item not found for tenant' });
+    }
+
+    // Update manufacturing price on the item if provided with an IN adjustment
+    if (type === 'IN' && manufacturingPrice !== undefined && manufacturingPrice !== '') {
+      const newMfgPrice = Number(manufacturingPrice);
+      if (!isNaN(newMfgPrice) && newMfgPrice >= 0) {
+        item.manufacturingPrice = newMfgPrice;
+        await item.save();
+      }
     }
 
     const stock = await Stock.findOneAndUpdate(
@@ -79,6 +88,7 @@ router.post('/adjust', requireRoles('admin', 'manager', 'staff'), async (req, re
       type,
       quantity: qty,
       resultingQuantity: stock.quantity,
+      ...(type === 'IN' && manufacturingPrice !== undefined && manufacturingPrice !== '' ? { manufacturingPriceUpdated: Number(manufacturingPrice) } : {}),
     });
 
     res.json(stock);

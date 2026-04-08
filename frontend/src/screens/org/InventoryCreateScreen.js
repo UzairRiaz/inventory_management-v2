@@ -12,6 +12,7 @@ export default function InventoryCreateScreen({ navigation }) {
   const [itemId, setItemId] = useState('');
   const [quantity, setQuantity] = useState('');
   const [adjustType, setAdjustType] = useState('IN');
+  const [manufacturingPrice, setManufacturingPrice] = useState('');
 
   const loadOptions = async () => {
     try {
@@ -50,6 +51,7 @@ export default function InventoryCreateScreen({ navigation }) {
         itemId,
         quantity: Number(quantity || 0),
         type: adjustType,
+        ...(adjustType === 'IN' && manufacturingPrice !== '' ? { manufacturingPrice: Number(manufacturingPrice) } : {}),
       });
 
       Alert.alert('Success', 'Inventory updated successfully');
@@ -87,6 +89,19 @@ export default function InventoryCreateScreen({ navigation }) {
 
         <Text style={styles.fieldLabel}>Adjustment Type</Text>
         <TextInput style={styles.input} value={adjustType} onChangeText={setAdjustType} placeholder="IN or OUT" autoCapitalize="characters" />
+
+        {adjustType === 'IN' && (
+          <>
+            <Text style={styles.fieldLabel}>Manufacturing Cost (optional — updates item)</Text>
+            <TextInput
+              style={styles.input}
+              value={manufacturingPrice}
+              onChangeText={setManufacturingPrice}
+              placeholder="Leave blank to keep existing price"
+              keyboardType="numeric"
+            />
+          </>
+        )}
 
         <Button title={user.role === 'staff' ? 'Request Adjustment' : 'Adjust Stock'} onPress={onSubmit} color="#7c3aed" />
       </Section>

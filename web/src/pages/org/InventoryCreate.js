@@ -13,6 +13,7 @@ export default function InventoryCreate() {
   const [itemId, setItemId] = useState('');
   const [quantity, setQuantity] = useState('');
   const [adjustType, setAdjustType] = useState('IN');
+  const [manufacturingPrice, setManufacturingPrice] = useState('');
   const [error, setError] = useState('');
 
   const loadOptions = async () => {
@@ -52,6 +53,7 @@ export default function InventoryCreate() {
         itemId,
         quantity: Number(quantity || 0),
         type: adjustType,
+        ...(adjustType === 'IN' && manufacturingPrice !== '' ? { manufacturingPrice: Number(manufacturingPrice) } : {}),
       });
 
       navigate('/org/inventory');
@@ -89,6 +91,18 @@ export default function InventoryCreate() {
 
           <label className="field-label">Adjustment Type</label>
           <input className="input" value={adjustType} onChange={(e) => setAdjustType(e.target.value)} placeholder="IN or OUT" />
+
+          {adjustType === 'IN' && (
+            <>
+              <label className="field-label">Manufacturing Cost (optional — updates item)</label>
+              <input
+                className="input"
+                value={manufacturingPrice}
+                onChange={(e) => setManufacturingPrice(e.target.value)}
+                placeholder="Leave blank to keep existing price"
+              />
+            </>
+          )}
 
           {error ? <div className="meta-text">{error}</div> : null}
 
