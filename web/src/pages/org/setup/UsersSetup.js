@@ -1,18 +1,17 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { api } from '../../../api';
 import { useAuth } from '../../../auth/AuthContext';
-import { RecordList, Screen, Section } from '../../../components/ui';
+import { RecordDetailModal, RecordList, Screen, Section } from '../../../components/ui';
 
 export default function UsersSetup() {
   const { token, user } = useAuth();
-  const navigate = useNavigate();
   const [users, setUsers] = useState([]);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('staff');
   const [error, setError] = useState('');
+  const [detailModal, setDetailModal] = useState(null);
   const canCreateUsers = user.role === 'admin';
 
   const loadUsers = useCallback(async () => {
@@ -71,16 +70,17 @@ export default function UsersSetup() {
             { key: 'email', title: 'Email' },
             { key: 'role', title: 'Role' },
           ]}
-          onRowPress={(item) =>
-            navigate('/org/detail', {
-              state: {
-                title: 'User Details',
-                details: item,
-              },
-            })
-          }
+          onRowPress={(item) => setDetailModal({ title: 'User Details', details: item })}
         />
       </Section>
+
+      {detailModal && (
+        <RecordDetailModal
+          title={detailModal.title}
+          details={detailModal.details}
+          onClose={() => setDetailModal(null)}
+        />
+      )}
     </Screen>
   );
 }

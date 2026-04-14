@@ -107,4 +107,11 @@ export const api = {
   },
 
   getActivity: (token) => request('/api/activity', {}, token),
+
+  getPurchases: (token) => request('/api/purchases', {}, token),
+  createPurchase: (token, payload) => request('/api/purchases', { method: 'POST', body: JSON.stringify(payload) }, token),
+  getPurchaseSummary: (token) => request('/api/purchases/summary', {}, token),
+  updatePurchase: (token, id, payload) => request(`/api/purchases/${id}`, { method: 'PUT', body: JSON.stringify(payload) }, token),
+  deletePurchase: (token, id) => request(`/api/purchases/${id}`, { method: 'DELETE' }, token),
+  recordPurchasePayment: (token, id, payload) => request(`/api/purchases/${id}/payments`, { method: 'POST', body: JSON.stringify(payload) }, token),
 };

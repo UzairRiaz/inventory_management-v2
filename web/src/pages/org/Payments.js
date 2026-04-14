@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../api';
 import { useAuth } from '../../auth/AuthContext';
-import { RecordList, Screen, Section } from '../../components/ui';
+import { RecordDetailModal, RecordList, Screen, Section } from '../../components/ui';
 
 export default function Payments() {
   const { token, user } = useAuth();
@@ -12,6 +12,7 @@ export default function Payments() {
   const [incomingPayments, setIncomingPayments] = useState([]);
   const [customerPayments, setCustomerPayments] = useState([]);
   const [error, setError] = useState('');
+  const [detailModal, setDetailModal] = useState(null);
 
   const loadPaymentData = useCallback(async () => {
     try {
@@ -52,12 +53,7 @@ export default function Payments() {
             { key: 'remainingAmount', title: 'Remaining' },
           ]}
           onRowPress={(sale) =>
-            navigate('/org/detail', {
-              state: {
-                title: 'Outstanding Sale Details',
-                details: sale,
-              },
-            })
+            setDetailModal({ title: 'Outstanding Sale Details', details: sale })
           }
         />
         <RecordList
@@ -90,19 +86,12 @@ export default function Payments() {
             { key: 'paymentDate', title: 'Date' },
           ]}
           onRowPress={(payment) =>
-            navigate('/org/detail', {
-              state: {
-                title: 'Payment Details',
-                details: payment,
-                deleteAction: payment.paymentId && ['admin', 'manager'].includes(user?.role)
-                  ? {
-                      type: 'payment',
-                      saleId: payment.saleId,
-                      paymentId: payment.paymentId,
-                      label: 'Delete Payment',
-                    }
-                  : null,
-              },
+            setDetailModal({
+              title: 'Payment Details',
+              details: payment,
+              canDelete: !!(payment.paymentId && ['admin', 'manager'].includes(user?.role)),
+              saleId: payment.saleId,
+              paymentId: payment.paymentId,
             })
           }
         />
@@ -116,15 +105,27 @@ export default function Payments() {
             { key: 'paymentDate', title: 'Date' },
           ]}
           onRowPress={(payment) =>
-            navigate('/org/detail', {
-              state: {
-                title: 'Customer Payment Details',
-                details: payment,
-              },
-            })
+            setDetailModal({ title: 'Customer Payment Details', details: payment })
           }
         />
       </Section>
+
+      {detailModal && (
+        <RecordDetailModal
+          title={detailModal.title}
+          details={detailModal.details}
+          onClose={() => setDetailModal(null)}
+          onDelete={
+            detailModal.canDelete
+              ? async () => {
+                  await api.deleteSalePayment(token, detailModal.saleId, detailModal.paymentId);
+                  await loadPaymentData();
+                }
+              : undefined
+          }
+          deleteLabel="Delete Payment"
+        />
+      )}
     </Screen>
   );
 }

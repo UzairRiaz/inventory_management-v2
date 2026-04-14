@@ -75,6 +75,7 @@ router.put('/:customerId', requireRoles('admin', 'manager'), async (req, res, ne
           ...(req.body.phone !== undefined && { phone: req.body.phone }),
           ...(req.body.email !== undefined && { email: req.body.email }),
           ...(req.body.address !== undefined && { address: req.body.address }),
+          ...(req.body.openingBalance !== undefined && { openingBalance: Number(req.body.openingBalance) }),
         },
       },
       { new: true },

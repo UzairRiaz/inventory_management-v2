@@ -2,13 +2,14 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../api';
 import { useAuth } from '../../auth/AuthContext';
-import { RecordList, Screen, Section } from '../../components/ui';
+import { RecordDetailModal, RecordList, Screen, Section } from '../../components/ui';
 
 export default function Sales() {
   const { token, user } = useAuth();
   const navigate = useNavigate();
   const [sales, setSales] = useState([]);
   const [error, setError] = useState('');
+  const [detailModal, setDetailModal] = useState(null);
 
   const loadSalesData = useCallback(async () => {
     try {
@@ -43,34 +44,45 @@ export default function Sales() {
             { key: 'remainingAmount', title: 'Remaining' },
           ]}
           onRowPress={(sale) =>
-            navigate('/org/detail', {
-              state: {
-                title: 'Sale Details',
-                details: {
-                  id: sale._id,
-                  customerName: sale.customerName,
-                  paymentType: sale.paymentType,
-                  soldAt: sale.soldAt,
-                  sellingTotal: sale.sellingTotal,
-                  amountPaid: sale.amountPaid,
-                  remainingAmount: sale.remainingAmount,
-                  manufacturingTotal: sale.manufacturingTotal,
-                  profit: sale.profit,
-                  items: sale.items,
-                  payments: sale.payments,
-                },
-                deleteAction: ['admin', 'manager'].includes(user?.role)
-                  ? {
-                      type: 'sale',
-                      id: sale._id,
-                      label: 'Delete Sale',
-                    }
-                  : null,
+            setDetailModal({
+              title: 'Sale Details',
+              details: {
+                id: sale._id,
+                customerName: sale.customerName,
+                paymentType: sale.paymentType,
+                soldAt: sale.soldAt,
+                sellingTotal: sale.sellingTotal,
+                amountPaid: sale.amountPaid,
+                remainingAmount: sale.remainingAmount,
+                manufacturingTotal: sale.manufacturingTotal,
+                profit: sale.profit,
+                items: sale.items,
+                payments: sale.payments,
               },
+              canDelete: ['admin', 'manager'].includes(user?.role),
+              saleId: sale._id,
             })
           }
         />
       </Section>
+
+      {detailModal && (
+        <RecordDetailModal
+          title={detailModal.title}
+          details={detailModal.details}
+          onClose={() => setDetailModal(null)}
+          onDelete={
+            detailModal.canDelete
+              ? async () => {
+                  await api.deleteSale(token, detailModal.saleId);
+                  const saleData = await api.getSales(token);
+                  setSales(saleData);
+                }
+              : undefined
+          }
+          deleteLabel="Delete Sale"
+        />
+      )}
     </Screen>
   );
 }

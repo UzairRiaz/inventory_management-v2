@@ -1,12 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { api } from '../../api';
 import { useAuth } from '../../auth/AuthContext';
-import { RecordList, Screen, Section } from '../../components/ui';
-import { useNavigate } from 'react-router-dom';
+import { RecordDetailModal, RecordList, Screen, Section } from '../../components/ui';
 
 export default function SuperAdminDashboard() {
   const { token } = useAuth();
-  const navigate = useNavigate();
   const [orgName, setOrgName] = useState('');
   const [orgCode, setOrgCode] = useState('');
   const [adminName, setAdminName] = useState('');
@@ -14,6 +12,7 @@ export default function SuperAdminDashboard() {
   const [adminPassword, setAdminPassword] = useState('');
   const [organizations, setOrganizations] = useState([]);
   const [error, setError] = useState('');
+  const [detailModal, setDetailModal] = useState(null);
 
   const loadOrganizations = useCallback(async () => {
     try {
@@ -73,16 +72,17 @@ export default function SuperAdminDashboard() {
             { key: 'name', title: 'Name' },
             { key: 'code', title: 'Code' },
           ]}
-          onRowPress={(item) =>
-            navigate('/detail', {
-              state: {
-                title: 'Organization Details',
-                details: item,
-              },
-            })
-          }
+          onRowPress={(item) => setDetailModal({ title: 'Organization Details', details: item })}
         />
       </Section>
+
+      {detailModal && (
+        <RecordDetailModal
+          title={detailModal.title}
+          details={detailModal.details}
+          onClose={() => setDetailModal(null)}
+        />
+      )}
     </Screen>
   );
 }

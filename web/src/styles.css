@@ -461,3 +461,150 @@ img, svg, .section, .card, .nav-tabs {
     min-width: 540px;
   }
 }
+
+/* ── Modal ────────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(30, 27, 75, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+.modal-box {
+  background: var(--panel);
+  border-radius: 16px;
+  border: 1px solid var(--panel-border);
+  box-shadow: 0 20px 60px rgba(49, 46, 129, 0.22);
+  width: min(620px, 96vw);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--panel-border);
+  flex-shrink: 0;
+}
+
+.modal-title {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--text);
+}
+
+.modal-close {
+  background: transparent;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  color: var(--muted);
+  padding: 2px 8px;
+  border-radius: 6px;
+  line-height: 1;
+}
+
+.modal-close:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.modal-body {
+  padding: 16px 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.detail-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.detail-table td {
+  padding: 7px 10px;
+  vertical-align: top;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.detail-table td:first-child {
+  font-weight: 600;
+  color: #334155;
+  width: 42%;
+  white-space: nowrap;
+}
+
+.detail-table td:last-child {
+  color: #475569;
+  word-break: break-word;
+}
+
+.table tr:hover td {
+  cursor: pointer;
+}
+
+/* ── Finance Summary Cards ────────────────────────────────── */
+.finance-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+@media (max-width: 540px) {
+  .finance-cards {
+    grid-template-columns: 1fr;
+  }
+}
+
+.finance-card {
+  border-radius: 14px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.finance-card.receive {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+}
+
+.finance-card.pay {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+}
+
+.finance-card-label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.finance-card.receive .finance-card-label { color: #14532d; }
+.finance-card.pay .finance-card-label { color: #7c2d12; }
+
+.finance-card-amount {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.finance-card.receive .finance-card-amount { color: #16a34a; }
+.finance-card.pay .finance-card-amount { color: #ea580c; }
+
+.finance-card-sub {
+  font-size: 11px;
+  color: var(--muted);
+}

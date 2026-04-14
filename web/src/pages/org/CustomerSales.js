@@ -1,16 +1,16 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { api } from '../../api';
 import { useAuth } from '../../auth/AuthContext';
-import { RecordList, Screen, Section } from '../../components/ui';
+import { RecordDetailModal, RecordList, Screen, Section } from '../../components/ui';
 
 export default function CustomerSales() {
   const { token } = useAuth();
-  const navigate = useNavigate();
   const location = useLocation();
   const { customerId, customerName, openingBalance, totalOutstanding } = location.state || {};
   const [sales, setSales] = useState([]);
   const [error, setError] = useState('');
+  const [detailModal, setDetailModal] = useState(null);
 
   const loadSales = useCallback(async () => {
     try {
@@ -29,11 +29,19 @@ export default function CustomerSales() {
   return (
     <Screen>
       <Section title="Customer Sales" icon="CST">
-        <div className="meta-text">Customer: {customerName || '-'}</div>
-        <div className="meta-text">Opening Outstanding: {openingBalance ?? 0}</div>
-        <div className="meta-text">Total Outstanding: {totalOutstanding ?? '-'}</div>
-        <div className="meta-text">
-          Outstanding from Sales: {sales.reduce((sum, sale) => sum + Number(sale.remainingAmount || 0), 0)}
+        <div className="meta-text">Customer: <strong>{customerName || '-'}</strong></div>
+
+        {/* Outstanding breakdown */}
+        <div className="summary-box" style={{ marginBottom: 8 }}>
+          <div className="summary-text">
+            Opening Balance: {Number(openingBalance ?? 0).toLocaleString()}
+          </div>
+          <div className="summary-text">
+            Pending from Sales: {sales.reduce((sum, sale) => sum + Number(sale.remainingAmount || 0), 0).toLocaleString()}
+          </div>
+          <div className="summary-text" style={{ borderTop: '1px solid #fed7aa', paddingTop: 6, marginTop: 2 }}>
+            Total Outstanding (Opening + Pending) = {Number(totalOutstanding ?? 0).toLocaleString()}
+          </div>
         </div>
         {error ? <div className="meta-text">{error}</div> : null}
         {sales.length === 0 ? (
@@ -51,28 +59,34 @@ export default function CustomerSales() {
               { key: 'remainingAmount', title: 'Remaining' },
             ]}
             onRowPress={(sale) =>
-              navigate('/org/detail', {
-                state: {
-                  title: 'Sale Details',
-                  details: {
-                    id: sale._id,
-                    customerName: sale.customer?.name || sale.customerName,
-                    paymentType: sale.paymentType,
-                    soldAt: sale.soldAt,
-                    sellingTotal: sale.sellingTotal,
-                    amountPaid: sale.amountPaid,
-                    remainingAmount: sale.remainingAmount,
-                    manufacturingTotal: sale.manufacturingTotal,
-                    profit: sale.profit,
-                    items: sale.items,
-                    payments: sale.payments,
-                  },
+              setDetailModal({
+                title: 'Sale Details',
+                details: {
+                  id: sale._id,
+                  customerName: sale.customer?.name || sale.customerName,
+                  paymentType: sale.paymentType,
+                  soldAt: sale.soldAt,
+                  sellingTotal: sale.sellingTotal,
+                  amountPaid: sale.amountPaid,
+                  remainingAmount: sale.remainingAmount,
+                  manufacturingTotal: sale.manufacturingTotal,
+                  profit: sale.profit,
+                  items: sale.items,
+                  payments: sale.payments,
                 },
               })
             }
           />
         )}
       </Section>
+
+      {detailModal && (
+        <RecordDetailModal
+          title={detailModal.title}
+          details={detailModal.details}
+          onClose={() => setDetailModal(null)}
+        />
+      )}
     </Screen>
   );
 }

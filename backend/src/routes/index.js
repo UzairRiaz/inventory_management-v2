@@ -11,6 +11,7 @@ import customerRoutes from './customers.js';
 import superadminRoutes from './superadmin.js';
 import ledgerRoutes from './ledger.js';
 import activityRoutes from './activity.js';
+import purchaseRoutes from './purchases.js';
 
 const router = Router();
 
@@ -26,5 +27,6 @@ router.use('/notes', noteRoutes);
 router.use('/sales', saleRoutes);
 router.use('/ledger', ledgerRoutes);
 router.use('/activity', activityRoutes);
+router.use('/purchases', purchaseRoutes);
 
 export default router;

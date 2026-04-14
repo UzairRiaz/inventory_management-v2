@@ -1,16 +1,15 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { api } from '../../../api';
 import { useAuth } from '../../../auth/AuthContext';
-import { RecordList, Screen, Section } from '../../../components/ui';
+import { RecordDetailModal, RecordList, Screen, Section } from '../../../components/ui';
 
 export default function WarehouseSetup() {
   const { token, user } = useAuth();
-  const navigate = useNavigate();
   const [warehouseName, setWarehouseName] = useState('');
   const [warehouseLocation, setWarehouseLocation] = useState('');
   const [warehouses, setWarehouses] = useState([]);
   const [error, setError] = useState('');
+  const [detailModal, setDetailModal] = useState(null);
   const canManageWarehouse = ['admin', 'manager'].includes(user.role);
 
   const loadWarehouses = useCallback(async () => {
@@ -62,16 +61,17 @@ export default function WarehouseSetup() {
             { key: 'name', title: 'Name' },
             { key: 'location', title: 'Location', render: (item) => item.location || '-' },
           ]}
-          onRowPress={(item) =>
-            navigate('/org/detail', {
-              state: {
-                title: 'Warehouse Details',
-                details: item,
-              },
-            })
-          }
+          onRowPress={(item) => setDetailModal({ title: 'Warehouse Details', details: item })}
         />
       </Section>
+
+      {detailModal && (
+        <RecordDetailModal
+          title={detailModal.title}
+          details={detailModal.details}
+          onClose={() => setDetailModal(null)}
+        />
+      )}
     </Screen>
   );
 }

@@ -2,13 +2,14 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../api';
 import { useAuth } from '../../auth/AuthContext';
-import { RecordList, Screen, Section } from '../../components/ui';
+import { RecordDetailModal, RecordList, Screen, Section } from '../../components/ui';
 
 export default function Ledger() {
   const { token, user } = useAuth();
   const navigate = useNavigate();
   const [entries, setEntries] = useState([]);
   const [error, setError] = useState('');
+  const [detailModal, setDetailModal] = useState(null);
   const canDeleteLedger = user?.role === 'admin';
 
   const loadEntries = useCallback(async () => {
@@ -56,17 +57,18 @@ export default function Ledger() {
               },
             },
           ]}
-          onRowPress={(item) =>
-            navigate('/org/detail', {
-              state: {
-                title: 'Ledger Row Details',
-                details: item,
-              },
-            })
-          }
+          onRowPress={(item) => setDetailModal({ title: 'Ledger Row Details', details: item })}
         />
         {canDeleteLedger ? <div className="meta-text">Admins can delete from backend tools if needed.</div> : null}
       </Section>
+
+      {detailModal && (
+        <RecordDetailModal
+          title={detailModal.title}
+          details={detailModal.details}
+          onClose={() => setDetailModal(null)}
+        />
+      )}
     </Screen>
   );
 }

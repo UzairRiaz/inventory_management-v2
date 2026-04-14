@@ -1,12 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { api } from '../../../api';
 import { useAuth } from '../../../auth/AuthContext';
-import { RecordList, Screen, Section } from '../../../components/ui';
+import { Modal, RecordList, Screen, Section } from '../../../components/ui';
 
 export default function CustomersSetup() {
   const { token, user } = useAuth();
-  const navigate = useNavigate();
   const [customers, setCustomers] = useState([]);
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [name, setName] = useState('');
@@ -14,7 +12,13 @@ export default function CustomersSetup() {
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
   const [openingBalance, setOpeningBalance] = useState('');
+  const [createName, setCreateName] = useState('');
+  const [createPhone, setCreatePhone] = useState('');
+  const [createEmail, setCreateEmail] = useState('');
+  const [createAddress, setCreateAddress] = useState('');
+  const [createOpeningBalance, setCreateOpeningBalance] = useState('');
   const [error, setError] = useState('');
+  const [modalError, setModalError] = useState('');
 
   const canManageCustomers = ['admin', 'manager'].includes(user.role);
 
@@ -28,33 +32,40 @@ export default function CustomersSetup() {
     }
   }, [token]);
 
-  const clearForm = () => {
-    setEditingCustomer(null);
-    setName('');
-    setPhone('');
-    setEmail('');
-    setAddress('');
-    setOpeningBalance('');
-  };
-
-  const startEdit = (customer) => {
+  const openEdit = (customer) => {
     setEditingCustomer(customer);
     setName(customer.name || '');
     setPhone(customer.phone || '');
     setEmail(customer.email || '');
     setAddress(customer.address || '');
-    setOpeningBalance('');
+    setOpeningBalance(customer.openingBalance != null ? String(customer.openingBalance) : '0');
+    setModalError('');
+  };
+
+  const closeModal = () => {
+    setEditingCustomer(null);
+    setModalError('');
   };
 
   const createCustomer = async () => {
     try {
-      if (!name) {
+      if (!createName) {
         setError('Customer name is required');
         return;
       }
-
-      await api.createCustomer(token, { name, phone, email, address, openingBalance: Number(openingBalance || 0) });
-      clearForm();
+      await api.createCustomer(token, {
+        name: createName,
+        phone: createPhone,
+        email: createEmail,
+        address: createAddress,
+        openingBalance: Number(createOpeningBalance || 0),
+      });
+      setCreateName('');
+      setCreatePhone('');
+      setCreateEmail('');
+      setCreateAddress('');
+      setCreateOpeningBalance('');
+      setError('');
       await loadCustomers();
     } catch (err) {
       setError(err.message);
@@ -64,14 +75,20 @@ export default function CustomersSetup() {
   const saveEdit = async () => {
     try {
       if (!name) {
-        setError('Customer name is required');
+        setModalError('Customer name is required');
         return;
       }
-      await api.updateCustomer(token, editingCustomer._id, { name, phone, email, address });
-      clearForm();
+      await api.updateCustomer(token, editingCustomer._id, {
+        name,
+        phone,
+        email,
+        address,
+        openingBalance: Number(openingBalance || 0),
+      });
+      closeModal();
       await loadCustomers();
     } catch (err) {
-      setError(err.message);
+      setModalError(err.message);
     }
   };
 
@@ -84,39 +101,24 @@ export default function CustomersSetup() {
       <Section title="Customers" icon="CST">
         {canManageCustomers ? (
           <>
-            {editingCustomer && (
-              <div className="meta-text" style={{ marginBottom: 4 }}>
-                Editing: <strong>{editingCustomer.name}</strong>
-              </div>
-            )}
             <label className="field-label">Name</label>
-            <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Customer name" />
+            <input className="input" value={createName} onChange={(e) => setCreateName(e.target.value)} placeholder="Customer name" />
             <label className="field-label">Phone</label>
-            <input className="input" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone" />
+            <input className="input" value={createPhone} onChange={(e) => setCreatePhone(e.target.value)} placeholder="Phone" />
             <label className="field-label">Email</label>
-            <input className="input" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" />
+            <input className="input" value={createEmail} onChange={(e) => setCreateEmail(e.target.value)} placeholder="Email" />
             <label className="field-label">Address</label>
-            <input className="input" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Address" />
-            {!editingCustomer && (
-              <>
-                <label className="field-label">Initial Outstanding</label>
-                <input
-                  className="input"
-                  value={openingBalance}
-                  onChange={(e) => setOpeningBalance(e.target.value)}
-                  placeholder="Opening balance"
-                />
-              </>
-            )}
+            <input className="input" value={createAddress} onChange={(e) => setCreateAddress(e.target.value)} placeholder="Address" />
+            <label className="field-label">Initial Outstanding</label>
+            <input
+              className="input"
+              value={createOpeningBalance}
+              onChange={(e) => setCreateOpeningBalance(e.target.value)}
+              placeholder="Opening balance"
+              type="number"
+            />
             <div className="actions-row">
-              {editingCustomer ? (
-                <>
-                  <button className="btn" onClick={saveEdit}>Save Changes</button>
-                  <button className="btn ghost" onClick={clearForm}>Cancel</button>
-                </>
-              ) : (
-                <button className="btn" onClick={createCustomer}>Create Customer</button>
-              )}
+              <button className="btn" onClick={createCustomer}>Create Customer</button>
             </div>
           </>
         ) : (
@@ -132,15 +134,35 @@ export default function CustomersSetup() {
             { key: 'email', title: 'Email' },
             { key: 'openingBalance', title: 'Outstanding' },
           ]}
-          onRowPress={(item) => {
-            if (canManageCustomers) {
-              startEdit(item);
-            } else {
-              navigate('/org/detail', { state: { title: 'Customer Details', details: item } });
-            }
-          }}
+          onRowPress={(item) => openEdit(item)}
         />
       </Section>
+
+      {editingCustomer && (
+        <Modal title={`Edit Customer: ${editingCustomer.name}`} onClose={closeModal}>
+          <label className="field-label">Name</label>
+          <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Customer name" />
+          <label className="field-label">Phone</label>
+          <input className="input" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone" />
+          <label className="field-label">Email</label>
+          <input className="input" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" />
+          <label className="field-label">Address</label>
+          <input className="input" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Address" />
+          <label className="field-label">Outstanding Balance</label>
+          <input
+            className="input"
+            value={openingBalance}
+            onChange={(e) => setOpeningBalance(e.target.value)}
+            placeholder="Outstanding balance"
+            type="number"
+          />
+          {modalError ? <div className="meta-text" style={{ color: 'var(--danger)' }}>{modalError}</div> : null}
+          <div className="actions-row">
+            <button className="btn" onClick={saveEdit}>Save Changes</button>
+            <button className="btn ghost" onClick={closeModal}>Cancel</button>
+          </div>
+        </Modal>
+      )}
     </Screen>
   );
 }
