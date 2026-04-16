@@ -40,7 +40,7 @@ export default function CustomerSales() {
             Pending from Sales: {sales.reduce((sum, sale) => sum + Number(sale.remainingAmount || 0), 0).toLocaleString()}
           </div>
           <div className="summary-text" style={{ borderTop: '1px solid #fed7aa', paddingTop: 6, marginTop: 2 }}>
-            Total Outstanding (Opening + Pending) = {Number(totalOutstanding ?? 0).toLocaleString()}
+            Total Outstanding (Opening + Pending) = {Number((openingBalance ?? 0) + sales.reduce((sum, sale) => sum + Number(sale.remainingAmount || 0), 0)).toLocaleString()}
           </div>
         </div>
         {error ? <div className="meta-text">{error}</div> : null}
