@@ -237,7 +237,7 @@ export function Modal({ title, onClose, children }) {
 
 // ── RecordDetailModal ─────────────────────────────────────
 
-export function RecordDetailModal({ title, details, onClose, onDelete, deleteLabel }) {
+export function RecordDetailModal({ title, details, onClose, onEdit, editLabel, onDelete, deleteLabel }) {
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
 
@@ -346,11 +346,18 @@ export function RecordDetailModal({ title, details, onClose, onDelete, deleteLab
 
       {error && <div className="meta-text" style={{ color: 'var(--danger)' }}>{error}</div>}
 
-      {onDelete && (
+      {(onEdit || onDelete) && (
         <div className="actions-row">
-          <button className="btn danger" onClick={handleDelete} disabled={deleting}>
-            {deleting ? 'Deleting…' : (deleteLabel || 'Delete')}
-          </button>
+          {onEdit && (
+            <button className="btn secondary" onClick={onEdit}>
+              {editLabel || 'Edit'}
+            </button>
+          )}
+          {onDelete && (
+            <button className="btn danger" onClick={handleDelete} disabled={deleting}>
+              {deleting ? 'Deleting…' : (deleteLabel || 'Delete')}
+            </button>
+          )}
         </div>
       )}
     </Modal>

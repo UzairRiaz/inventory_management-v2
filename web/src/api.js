@@ -66,6 +66,7 @@ export const api = {
     return request(`/api/sales${suffix}`, {}, token);
   },
   createSale: (token, payload) => request('/api/sales', { method: 'POST', body: JSON.stringify(payload) }, token),
+  updateSale: (token, saleId, payload) => request(`/api/sales/${saleId}`, { method: 'PUT', body: JSON.stringify(payload) }, token),
   deleteSale: (token, saleId) => request(`/api/sales/${saleId}`, { method: 'DELETE' }, token),
   getSalesProfit: (token, from, to) => {
     const params = new URLSearchParams();

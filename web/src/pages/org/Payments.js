@@ -63,7 +63,7 @@ export default function Payments() {
             { key: 'customerName', title: 'Customer' },
             { key: 'totalOutstanding', title: 'Outstanding' },
             { key: 'totalSales', title: 'Sales' },
-            { key: 'lastSaleDate', title: 'Last Sale' },
+            { key: 'totalRemaining', title: 'Remaining' },
           ]}
           onRowPress={(row) =>
             navigate('/org/customer-sales', {

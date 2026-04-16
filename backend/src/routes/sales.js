@@ -347,6 +347,8 @@ router.get('/credits/outstanding-by-customer', requireRoles('admin', 'manager', 
           openingBalance: 1,
           totalSales: 1,
           lastSaleDate: 1,
+          // totalRemaining from sale + totalOutstanding from User opening balance
+          totalRemaining: { $sum: ['$totalOutstanding', { $ifNull: ['$openingBalance', 0] }] },
         },
       },
     ]);
@@ -493,6 +495,114 @@ router.post('/:id/payments', requireRoles('admin', 'manager', 'staff'), async (r
     });
 
     res.json(sale);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.put('/:id', requireRoles('admin', 'manager'), async (req, res, next) => {
+  try {
+    const organization = new mongoose.Types.ObjectId(req.tenant.organizationId);
+    const sale = await Sale.findOne(withTenantFilter(req, { _id: req.params.id }));
+    if (!sale) {
+      return res.status(404).json({ message: 'Sale not found' });
+    }
+
+    const { customerId, customerName, paymentType, soldAt, items } = req.body;
+
+    // ── Update basic fields ────────────────────────────────────────
+    if (soldAt !== undefined) sale.soldAt = new Date(soldAt);
+    if (paymentType !== undefined) sale.paymentType = paymentType;
+
+    if (customerId) {
+      const customer = await Customer.findOne({ _id: customerId, organization });
+      if (!customer) return res.status(404).json({ message: 'Customer not found for tenant' });
+      sale.customer = customer._id;
+      sale.customerName = customer.name;
+    } else if (customerName !== undefined) {
+      sale.customer = undefined;
+      sale.customerName = customerName;
+    }
+
+    // ── Update items (restore old stock, apply new stock) ──────────
+    if (Array.isArray(items) && items.length > 0) {
+      // Restore stock for all old sale lines
+      for (const line of sale.items) {
+        const stock = await Stock.findOne({
+          organization,
+          warehouse: sale.warehouse,
+          item: line.item,
+        });
+        if (stock) {
+          stock.quantity += Number(line.quantity || 0);
+          await stock.save();
+        }
+      }
+
+      // Build new sale lines and deduct stock
+      const newLines = [];
+      let manufacturingTotal = 0;
+      let sellingTotal = 0;
+
+      for (const line of items) {
+        const quantity = Number(line.quantity || 0);
+        if (!line.itemId || quantity <= 0) {
+          return res.status(400).json({ message: 'Each sale line requires itemId and quantity > 0' });
+        }
+
+        const item = await Item.findOne({ _id: line.itemId, organization });
+        if (!item) return res.status(404).json({ message: `Item not found: ${line.itemId}` });
+
+        const stock = await Stock.findOne({ organization, warehouse: sale.warehouse, item: line.itemId });
+        if (!stock || stock.quantity < quantity) {
+          return res.status(400).json({ message: `Insufficient stock for item: ${item.name}` });
+        }
+
+        stock.quantity -= quantity;
+        await stock.save();
+
+        const unitManufacturingPrice = Number(line.unitManufacturingPrice ?? item.manufacturingPrice);
+        const unitSellingPrice = Number(line.unitSellingPrice ?? item.sellingPrice);
+        const lineManufacturingTotal = unitManufacturingPrice * quantity;
+        const lineSellingTotal = unitSellingPrice * quantity;
+        const lineProfit = lineSellingTotal - lineManufacturingTotal;
+
+        manufacturingTotal += lineManufacturingTotal;
+        sellingTotal += lineSellingTotal;
+
+        newLines.push({ item: item._id, quantity, unitManufacturingPrice, unitSellingPrice, lineManufacturingTotal, lineSellingTotal, lineProfit });
+      }
+
+      sale.items = newLines;
+      sale.manufacturingTotal = manufacturingTotal;
+      sale.sellingTotal = sellingTotal;
+      sale.profit = sellingTotal - manufacturingTotal;
+
+      // Recalculate amountPaid/remaining based on actual payments recorded
+      const totalPaid = sale.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+      if (sale.paymentType === 'cash') {
+        sale.amountPaid = sellingTotal;
+        sale.remainingAmount = 0;
+      } else {
+        sale.amountPaid = Math.min(totalPaid, sellingTotal);
+        sale.remainingAmount = Math.max(0, sellingTotal - sale.amountPaid);
+      }
+    }
+
+    await sale.save();
+
+    await logActivity(req, 'SALE_UPDATE', 'Sale', sale._id, {
+      customerName: sale.customerName,
+      sellingTotal: sale.sellingTotal,
+      paymentType: sale.paymentType,
+    });
+
+    const updated = await Sale.findById(sale._id)
+      .populate('warehouse', 'name')
+      .populate('customer', 'name email phone')
+      .populate('items.item', 'name sku');
+
+    res.json(updated);
   } catch (error) {
     next(error);
   }
