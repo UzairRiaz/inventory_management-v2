@@ -305,7 +305,7 @@ router.get('/credits/outstanding-by-customer', requireRoles('admin', 'manager', 
   try {
     const match = withTenantFilter(req, {
       paymentType: 'credit',
-      remainingAmount: { $gt: 0 },
+      // remainingAmount: { $gt: 0 },
     });
 
     const organization = new mongoose.Types.ObjectId(req.tenant.organizationId);
