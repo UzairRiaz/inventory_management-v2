@@ -4,6 +4,7 @@ import { requireTenant, withTenantFilter } from '../middleware/tenant.js';
 import { requireAuth, requireRoles } from '../middleware/auth.js';
 import { Purchase } from '../models/Purchase.js';
 import { Item } from '../models/Item.js';
+import { Vendor } from '../models/Vendor.js';
 import { Stock } from '../models/Stock.js';
 import { Warehouse } from '../models/Warehouse.js';
 import { logActivity } from '../utils/activity.js';
@@ -17,8 +18,9 @@ router.use(requireTenant);
 router.get('/', requireRoles('admin', 'manager', 'staff'), async (req, res, next) => {
   try {
     const purchases = await Purchase.find(withTenantFilter(req))
-      .populate('item', 'name sku manufacturingPrice sellingPrice')
+      .populate('item', 'name sku manufacturingPrice sellingPrice itemType')
       .populate('warehouse', 'name')
+      .populate('vendor', 'name phone email')
       .sort({ purchasedAt: -1 });
 
     res.json(purchases);
@@ -53,6 +55,8 @@ router.post('/', requireRoles('admin', 'manager'), async (req, res, next) => {
       quantity,
       unitPrice,
       supplier,
+      vendorId,
+      purchaseCategory = 'item',
       note,
       paymentType = 'cash',
       purchasedAt,
@@ -63,13 +67,34 @@ router.post('/', requireRoles('admin', 'manager'), async (req, res, next) => {
       return res.status(400).json({ message: 'warehouseId, itemId, and quantity (>0) are required' });
     }
 
-    const [warehouse, item] = await Promise.all([
+    const category = purchaseCategory === 'raw_material' ? 'raw_material' : 'item';
+    const expectedItemType = category === 'raw_material' ? 'raw_material' : 'finished_good';
+
+    if (category === 'raw_material' && !vendorId) {
+      return res.status(400).json({ message: 'vendorId is required for raw material purchases' });
+    }
+
+    const [warehouse, item, vendor] = await Promise.all([
       Warehouse.findOne({ _id: warehouseId, organization }),
       Item.findOne({ _id: itemId, organization }),
+      vendorId ? Vendor.findOne({ _id: vendorId, organization }) : Promise.resolve(null),
     ]);
 
     if (!warehouse) return res.status(404).json({ message: 'Warehouse not found for tenant' });
     if (!item) return res.status(404).json({ message: 'Item not found for tenant' });
+    if (vendorId && !vendor) return res.status(404).json({ message: 'Vendor not found for tenant' });
+
+    const itemType = item.itemType || 'finished_good';
+    if (itemType !== expectedItemType) {
+      return res.status(400).json({
+        message:
+          category === 'raw_material'
+            ? 'Selected item must be a raw material'
+            : 'Selected item must be a finished good',
+      });
+    }
+
+    const supplierName = vendor?.name || supplier || '';
 
     const price = Number(unitPrice || 0);
     const totalAmount = qty * price;
@@ -98,10 +123,12 @@ router.post('/', requireRoles('admin', 'manager'), async (req, res, next) => {
       organization,
       warehouse: warehouseId,
       item: itemId,
+      purchaseCategory: category,
+      vendor: vendor?._id,
       quantity: qty,
       unitPrice: price,
       totalAmount,
-      supplier: supplier || '',
+      supplier: supplierName,
       note: note || '',
       paymentType,
       paidAmount,
@@ -123,10 +150,12 @@ router.post('/', requireRoles('admin', 'manager'), async (req, res, next) => {
     await logActivity(req, 'PURCHASE_CREATE', 'Purchase', purchase._id, {
       itemId,
       itemName: item.name,
+      purchaseCategory: category,
       quantity: qty,
       paymentType,
       totalAmount,
-      supplier: supplier || '',
+      supplier: supplierName,
+      vendorId: vendor?._id,
     });
 
     res.status(201).json(purchase);
@@ -139,20 +168,31 @@ router.post('/', requireRoles('admin', 'manager'), async (req, res, next) => {
 router.put('/:id', requireRoles('admin', 'manager'), async (req, res, next) => {
   try {
     const organization = new mongoose.Types.ObjectId(req.tenant.organizationId);
-    const { supplier, note, purchasedAt } = req.body;
+    const { supplier, note, purchasedAt, vendorId } = req.body;
 
     const update = {};
     if (supplier !== undefined) update.supplier = supplier;
     if (note !== undefined) update.note = note;
     if (purchasedAt !== undefined) update.purchasedAt = new Date(purchasedAt);
+    if (vendorId !== undefined) {
+      if (vendorId) {
+        const vendor = await Vendor.findOne({ _id: vendorId, organization });
+        if (!vendor) return res.status(404).json({ message: 'Vendor not found' });
+        update.vendor = vendor._id;
+        update.supplier = vendor.name;
+      } else {
+        update.vendor = null;
+      }
+    }
 
     const purchase = await Purchase.findOneAndUpdate(
       { _id: req.params.id, organization },
       { $set: update },
       { new: true },
     )
-      .populate('item', 'name sku')
-      .populate('warehouse', 'name');
+      .populate('item', 'name sku itemType')
+      .populate('warehouse', 'name')
+      .populate('vendor', 'name phone email');
 
     if (!purchase) return res.status(404).json({ message: 'Purchase not found' });
 
@@ -227,6 +267,35 @@ router.post('/:id/payments', requireRoles('admin', 'manager'), async (req, res, 
     });
 
     res.json(purchase);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/purchases/:id/payments/:paymentId — reverse a recorded payment
+router.delete('/:id/payments/:paymentId', requireRoles('admin', 'manager'), async (req, res, next) => {
+  try {
+    const organization = new mongoose.Types.ObjectId(req.tenant.organizationId);
+    const purchase = await Purchase.findOne({ _id: req.params.id, organization });
+
+    if (!purchase) return res.status(404).json({ message: 'Purchase not found' });
+
+    const payment = purchase.payments.id(req.params.paymentId);
+    if (!payment) return res.status(404).json({ message: 'Payment not found' });
+
+    const amount = Number(payment.amount || 0);
+    purchase.paidAmount = Math.max(0, Number(purchase.paidAmount || 0) - amount);
+    purchase.remainingAmount = Number(purchase.remainingAmount || 0) + amount;
+
+    payment.deleteOne();
+    await purchase.save();
+
+    await logActivity(req, 'PURCHASE_PAYMENT_DELETE', 'Purchase', purchase._id, {
+      amount,
+      remainingAmount: purchase.remainingAmount,
+    });
+
+    res.json({ message: 'Payment deleted', purchase });
   } catch (err) {
     next(err);
   }

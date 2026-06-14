@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../api';
 import { useAuth } from '../../auth/AuthContext';
-import { Modal, RecordList, Screen, Section, Select } from '../../components/ui';
+import { Badge, FormGroup, Modal, RecordList, Screen, Section, Select, Tabs } from '../../components/ui';
 
 // ── PurchaseModal ──────────────────────────────────────────────────────────────
 function PurchaseModal({ purchase, onClose, onRefresh, canEdit }) {
@@ -65,9 +65,23 @@ function PurchaseModal({ purchase, onClose, onRefresh, canEdit }) {
     resetError();
     try {
       await api.deletePurchase(token, purchase._id);
-      onClose(purchase._id); // signal deletion
+      onClose(purchase._id);
     } catch (err) {
       setError(err.message);
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeletePayment = async (paymentId) => {
+    if (!window.confirm('Delete this payment? The remaining balance will be restored.')) return;
+    setSubmitting(true);
+    resetError();
+    try {
+      await api.deletePurchasePayment(token, purchase._id, paymentId);
+      await onRefresh(purchase._id);
+    } catch (err) {
+      setError(err.message);
+    } finally {
       setSubmitting(false);
     }
   };
@@ -96,7 +110,11 @@ function PurchaseModal({ purchase, onClose, onRefresh, canEdit }) {
                   {purchase.remainingAmount}
                 </td>
               </tr>
-              <tr><td>Supplier</td><td>{purchase.supplier || '-'}</td></tr>
+              <tr><td>Supplier</td><td>{purchase.vendor?.name || purchase.supplier || '-'}</td></tr>
+              <tr>
+                <td>Purchase Type</td>
+                <td>{purchase.purchaseCategory === 'raw_material' ? 'Raw Material' : 'Finished Item'}</td>
+              </tr>
               <tr><td>Date</td><td>{purchase.purchasedAt ? new Date(purchase.purchasedAt).toLocaleDateString() : '-'}</td></tr>
               <tr><td>Note</td><td>{purchase.note || '-'}</td></tr>
             </tbody>
@@ -107,7 +125,7 @@ function PurchaseModal({ purchase, onClose, onRefresh, canEdit }) {
               <div style={{ fontWeight: 600, margin: '12px 0 4px' }}>Payment History</div>
               <table className="detail-table">
                 <thead>
-                  <tr><th>Amount</th><th>Date</th><th>Note</th><th>By</th></tr>
+                  <tr><th>Amount</th><th>Date</th><th>Note</th><th>By</th>{canEdit ? <th /> : null}</tr>
                 </thead>
                 <tbody>
                   {purchase.payments.map((p, i) => (
@@ -116,6 +134,19 @@ function PurchaseModal({ purchase, onClose, onRefresh, canEdit }) {
                       <td>{p.paidAt ? new Date(p.paidAt).toLocaleDateString() : '-'}</td>
                       <td>{p.note || '-'}</td>
                       <td>{p.recordedBy || '-'}</td>
+                      {canEdit ? (
+                        <td>
+                          <button
+                            type="button"
+                            className="btn danger"
+                            style={{ padding: '4px 8px', fontSize: 12 }}
+                            disabled={submitting}
+                            onClick={() => handleDeletePayment(p._id)}
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      ) : null}
                     </tr>
                   ))}
                 </tbody>
@@ -228,6 +259,9 @@ export default function Purchase() {
   const [quantity, setQuantity] = useState('');
   const [purchasePrice, setPurchasePrice] = useState('');
   const [supplier, setSupplier] = useState('');
+  const [vendorId, setVendorId] = useState('');
+  const [vendors, setVendors] = useState([]);
+  const [purchaseCategory, setPurchaseCategory] = useState('item');
   const [note, setNote] = useState('');
   const [paymentType, setPaymentType] = useState('cash');
   const [purchasedAt, setPurchasedAt] = useState('');
@@ -253,24 +287,34 @@ export default function Purchase() {
 
   const loadOptions = useCallback(async () => {
     try {
-      const [warehouseData, itemData, purchaseData] = await Promise.all([
+      const itemType = purchaseCategory === 'raw_material' ? 'raw_material' : 'finished_good';
+      const [warehouseData, itemData, purchaseData, vendorData] = await Promise.all([
         api.getWarehouses(token),
-        api.getItems(token),
+        api.getItems(token, itemType),
         api.getPurchases(token),
+        api.getVendors(token),
       ]);
       setWarehouses(warehouseData);
       setItems(itemData);
       setPurchases(purchaseData);
+      setVendors(vendorData);
 
       if (!warehouseId && warehouseData[0]?._id) setWarehouseId(warehouseData[0]._id);
-      if (!itemId && itemData[0]?._id) {
-        setItemId(itemData[0]._id);
-        setPurchasePrice(String(itemData[0].manufacturingPrice ?? ''));
+      const nextItem = itemData[0];
+      if (nextItem?._id) {
+        setItemId(nextItem._id);
+        setPurchasePrice(String(nextItem.manufacturingPrice ?? ''));
+      } else {
+        setItemId('');
+        setPurchasePrice('');
+      }
+      if (!vendorId && vendorData[0]?._id && purchaseCategory === 'raw_material') {
+        setVendorId(vendorData[0]._id);
       }
     } catch (err) {
       setError(err.message);
     }
-  }, [token]);
+  }, [token, purchaseCategory]);
 
   const handleItemChange = (id) => {
     setItemId(id);
@@ -287,6 +331,10 @@ export default function Purchase() {
       setError('Please select a warehouse and an item');
       return;
     }
+    if (purchaseCategory === 'raw_material' && !vendorId) {
+      setError('Please select a vendor for raw material purchase');
+      return;
+    }
     const qty = Number(quantity || 0);
     if (qty <= 0) {
       setError('Quantity must be greater than 0');
@@ -300,19 +348,26 @@ export default function Purchase() {
         itemId,
         quantity: qty,
         unitPrice: purchasePrice !== '' ? Number(purchasePrice) : 0,
-        supplier,
+        purchaseCategory,
+        vendorId: purchaseCategory === 'raw_material' ? vendorId : undefined,
+        supplier: purchaseCategory === 'item' ? supplier : undefined,
         note,
         paymentType,
         purchasedAt: purchasedAt || undefined,
       });
 
-      const label = paymentType === 'credit' ? 'credit purchase' : 'cash purchase';
+      const label = purchaseCategory === 'raw_material'
+        ? 'raw material purchase'
+        : paymentType === 'credit'
+          ? 'credit purchase'
+          : 'cash purchase';
       setSuccess(`Purchase recorded — ${qty} units added to stock (${label}).`);
       setQuantity('');
       setSupplier('');
       setNote('');
       setPurchasedAt('');
       setPaymentType('cash');
+      if (purchaseCategory === 'item') setVendorId('');
 
       const updated = await api.getPurchases(token);
       setPurchases(updated);
@@ -327,6 +382,14 @@ export default function Purchase() {
     loadOptions();
   }, [loadOptions]);
 
+  const handleCategoryChange = (category) => {
+    setPurchaseCategory(category);
+    setItemId('');
+    setPurchasePrice('');
+    setSupplier('');
+    if (category === 'item') setVendorId('');
+  };
+
   const selectedItem = items.find((i) => i._id === itemId);
   const qty = Number(quantity || 0);
   const price = Number(purchasePrice || 0);
@@ -339,6 +402,16 @@ export default function Purchase() {
           <div className="meta-text">Only admin/manager can record purchases.</div>
         ) : (
           <form onSubmit={onSubmit}>
+            <Tabs
+              tabs={[
+                { id: 'item', label: 'Finished Item' },
+                { id: 'raw_material', label: 'Raw Material' },
+              ]}
+              active={purchaseCategory}
+              onChange={handleCategoryChange}
+            />
+
+            <FormGroup title={purchaseCategory === 'raw_material' ? 'Raw material from vendor' : 'Finished item purchase'}>
             <div className="field-label">Warehouse</div>
             <Select
               value={warehouseId}
@@ -347,13 +420,20 @@ export default function Purchase() {
               items={warehouses.map((w) => ({ label: w.name, value: w._id }))}
             />
 
-            <div className="field-label">Item</div>
+            <div className="field-label">{purchaseCategory === 'raw_material' ? 'Raw Material' : 'Item'}</div>
             <Select
               value={itemId}
               onChange={handleItemChange}
-              placeholder="Select item"
+              placeholder={purchaseCategory === 'raw_material' ? 'Select raw material' : 'Select item'}
               items={items.map((i) => ({ label: i.name, value: i._id }))}
             />
+
+            {items.length === 0 ? (
+              <div className="meta-text">
+                No {purchaseCategory === 'raw_material' ? 'raw materials' : 'finished items'} found.
+                Add them in Setup → Items.
+              </div>
+            ) : null}
 
             {selectedItem && (
               <div className="meta-text" style={{ marginBottom: 4 }}>
@@ -404,13 +484,32 @@ export default function Purchase() {
               </div>
             )}
 
-            <label className="field-label">Supplier / Vendor (optional)</label>
-            <input
-              className="input"
-              value={supplier}
-              onChange={(e) => setSupplier(e.target.value)}
-              placeholder="Supplier name"
-            />
+            {purchaseCategory === 'raw_material' ? (
+              <>
+                <div className="field-label">Vendor</div>
+                <Select
+                  value={vendorId}
+                  onChange={setVendorId}
+                  placeholder="Select vendor"
+                  items={vendors.map((v) => ({ label: v.name, value: v._id }))}
+                />
+                {vendors.length === 0 ? (
+                  <div className="meta-text">
+                    No vendors yet. Add vendors in Setup → Vendors.
+                  </div>
+                ) : null}
+              </>
+            ) : (
+              <>
+                <label className="field-label">Supplier (optional)</label>
+                <input
+                  className="input"
+                  value={supplier}
+                  onChange={(e) => setSupplier(e.target.value)}
+                  placeholder="Supplier name"
+                />
+              </>
+            )}
 
             <label className="field-label">Purchase Date (optional)</label>
             <input
@@ -427,6 +526,7 @@ export default function Purchase() {
               onChange={(e) => setNote(e.target.value)}
               placeholder="Optional note"
             />
+            </FormGroup>
 
             {error ? <div className="meta-text" style={{ color: '#dc2626' }}>{error}</div> : null}
             {success ? <div className="meta-text" style={{ color: '#16a34a' }}>{success}</div> : null}
@@ -449,6 +549,15 @@ export default function Purchase() {
           data={purchases}
           columns={[
             { key: 'purchasedAt', title: 'Date' },
+            {
+              key: 'purchaseCategory',
+              title: 'Type',
+              render: (p) => (
+                <Badge variant={p.purchaseCategory === 'raw_material' ? 'warning' : 'neutral'}>
+                  {p.purchaseCategory === 'raw_material' ? 'Raw Material' : 'Item'}
+                </Badge>
+              ),
+            },
             { key: 'item', title: 'Item', render: (p) => p.item?.name || '-' },
             { key: 'quantity', title: 'Qty' },
             { key: 'unitPrice', title: 'Unit Price' },
@@ -463,7 +572,7 @@ export default function Purchase() {
               ),
             },
             { key: 'remainingAmount', title: 'Remaining' },
-            { key: 'supplier', title: 'Supplier', render: (p) => p.supplier || '-' },
+            { key: 'supplier', title: 'Vendor/Supplier', render: (p) => p.vendor?.name || p.supplier || '-' },
           ]}
           onRowPress={(p) => setDetailModal(p)}
         />

@@ -1,23 +1,38 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Screen, Section } from '../../../components/ui';
+import { Screen, Section, SetupMenuGroup } from '../../../components/ui';
 
 export default function SetupHome() {
-  const navigate = useNavigate();
-
   return (
     <Screen>
       <Section title="Setup" icon="SET">
-        <div className="actions-row">
-          <button className="btn" onClick={() => navigate('/org/setup/warehouses')}>Warehouse Management</button>
-          <button className="btn" onClick={() => navigate('/org/setup/items')}>Item Management</button>
-          <button className="btn" onClick={() => navigate('/org/setup/customers')}>Customers</button>
-          <button className="btn" onClick={() => navigate('/org/setup/users')}>Users</button>
-          <button className="btn secondary" onClick={() => navigate('/org/ledger')}>Ledger</button>
-          <button className="btn secondary" onClick={() => navigate('/org/setup/notes')}>Notes</button>
-          <button className="btn warning" onClick={() => navigate('/org/setup/profit')}>Profit</button>
-          <button className="btn ghost" onClick={() => navigate('/org/setup/activity')}>Activity Log</button>
-        </div>
+        <SetupMenuGroup
+          title="Daily Operations"
+          items={[
+            { label: 'Sales', sub: 'View all sales', icon: 'cart', path: '/org/setup/sales' },
+            { label: 'New Sale', sub: 'Create a sale', icon: 'plus', path: '/org/setup/sales/new' },
+            { label: 'Receive Payment', sub: 'Collect from customer', icon: 'dollar', path: '/org/setup/payments/new' },
+            { label: 'Payment History', sub: 'All received payments', icon: 'ledger', path: '/org/setup/payments' },
+          ]}
+        />
+        <SetupMenuGroup
+          title="Master Data"
+          items={[
+            { label: 'Items', sub: 'Products & raw materials', icon: 'box', path: '/org/setup/items' },
+            { label: 'Vendors', sub: 'Raw material suppliers', icon: 'truck', path: '/org/setup/vendors' },
+            { label: 'Warehouses', sub: 'Storage locations', icon: 'warehouse', path: '/org/setup/warehouses' },
+            { label: 'Customers', sub: 'Add & edit customers', icon: 'users', path: '/org/setup/customers' },
+            { label: 'Users', sub: 'Team access', icon: 'users', path: '/org/setup/users' },
+          ]}
+        />
+        <SetupMenuGroup
+          title="Finance & Reports"
+          items={[
+            { label: 'Ledger', sub: 'Manual entries', icon: 'ledger', path: '/org/ledger' },
+            { label: 'Profit', sub: 'Sales profit report', icon: 'profit', path: '/org/setup/profit', variant: 'warning' },
+            { label: 'Notes', sub: 'Credit & debit notes', icon: 'note', path: '/org/setup/notes' },
+            { label: 'Activity Log', sub: 'Audit trail', icon: 'activity', path: '/org/setup/activity' },
+          ]}
+        />
       </Section>
     </Screen>
   );

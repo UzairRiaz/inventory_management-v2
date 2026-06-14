@@ -40,16 +40,27 @@ export const api = {
   getWarehouses: (token) => request('/api/warehouses', {}, token),
   createWarehouse: (token, payload) => request('/api/warehouses', { method: 'POST', body: JSON.stringify(payload) }, token),
 
-  getItems: (token) => request('/api/items', {}, token),
+  getItems: (token, itemType) => {
+    const suffix = itemType ? `?itemType=${encodeURIComponent(itemType)}` : '';
+    return request(`/api/items${suffix}`, {}, token);
+  },
   createItem: (token, payload) => request('/api/items', { method: 'POST', body: JSON.stringify(payload) }, token),
   updateItem: (token, itemId, payload) => request(`/api/items/${itemId}`, { method: 'PUT', body: JSON.stringify(payload) }, token),
 
+  getVendors: (token) => request('/api/vendors', {}, token),
+  createVendor: (token, payload) => request('/api/vendors', { method: 'POST', body: JSON.stringify(payload) }, token),
+  updateVendor: (token, vendorId, payload) => request(`/api/vendors/${vendorId}`, { method: 'PUT', body: JSON.stringify(payload) }, token),
+
   getCustomers: (token) => request('/api/customers', {}, token),
+  getCustomer: (token, customerId) => request(`/api/customers/${customerId}`, {}, token),
+  getCustomerAccount: (token, customerId) => request(`/api/customers/${customerId}/account`, {}, token),
   createCustomer: (token, payload) => request('/api/customers', { method: 'POST', body: JSON.stringify(payload) }, token),
   updateCustomer: (token, customerId, payload) => request(`/api/customers/${customerId}`, { method: 'PUT', body: JSON.stringify(payload) }, token),
   getCustomerPayments: (token) => request('/api/customers/payments', {}, token),
   receiveCustomerPayment: (token, customerId, payload) =>
     request(`/api/customers/${customerId}/payments`, { method: 'POST', body: JSON.stringify(payload) }, token),
+  deleteCustomerPayment: (token, customerId, paymentId) =>
+    request(`/api/customers/${customerId}/payments/${paymentId}`, { method: 'DELETE' }, token),
 
   getStock: (token, warehouseId) => request(`/api/stock${warehouseId ? `?warehouseId=${warehouseId}` : ''}`, {}, token),
   adjustStock: (token, payload) => request('/api/stock/adjust', { method: 'POST', body: JSON.stringify(payload) }, token),
@@ -115,4 +126,6 @@ export const api = {
   updatePurchase: (token, id, payload) => request(`/api/purchases/${id}`, { method: 'PUT', body: JSON.stringify(payload) }, token),
   deletePurchase: (token, id) => request(`/api/purchases/${id}`, { method: 'DELETE' }, token),
   recordPurchasePayment: (token, id, payload) => request(`/api/purchases/${id}/payments`, { method: 'POST', body: JSON.stringify(payload) }, token),
+  deletePurchasePayment: (token, purchaseId, paymentId) =>
+    request(`/api/purchases/${purchaseId}/payments/${paymentId}`, { method: 'DELETE' }, token),
 };

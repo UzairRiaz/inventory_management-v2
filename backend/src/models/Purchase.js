@@ -28,6 +28,15 @@ const purchaseSchema = new mongoose.Schema(
       ref: 'Item',
       required: true,
     },
+    purchaseCategory: {
+      type: String,
+      enum: ['item', 'raw_material'],
+      default: 'item',
+    },
+    vendor: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Vendor',
+    },
     quantity: { type: Number, required: true, min: 1 },
     unitPrice: { type: Number, default: 0, min: 0 },
     totalAmount: { type: Number, default: 0 },

@@ -1,7 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { api } from '../../../api';
 import { useAuth } from '../../../auth/AuthContext';
-import { Modal, RecordList, Screen, Section } from '../../../components/ui';
+import { Modal, PageHeader, RecordList, Screen, Section, Select } from '../../../components/ui';
+
+const ITEM_TYPE_OPTIONS = [
+  { label: 'Finished Good (for sale)', value: 'finished_good' },
+  { label: 'Raw Material (for purchase)', value: 'raw_material' },
+];
 
 export default function ItemsSetup() {
   const { token, user } = useAuth();
@@ -9,10 +14,12 @@ export default function ItemsSetup() {
   const [editingItem, setEditingItem] = useState(null);
   const [itemName, setItemName] = useState('');
   const [itemTags, setItemTags] = useState('');
+  const [itemType, setItemType] = useState('finished_good');
   const [manufacturingPrice, setManufacturingPrice] = useState('');
   const [sellingPrice, setSellingPrice] = useState('');
   const [createName, setCreateName] = useState('');
   const [createTags, setCreateTags] = useState('');
+  const [createItemType, setCreateItemType] = useState('finished_good');
   const [createMfgPrice, setCreateMfgPrice] = useState('');
   const [createSellPrice, setCreateSellPrice] = useState('');
   const [error, setError] = useState('');
@@ -33,6 +40,7 @@ export default function ItemsSetup() {
     setEditingItem(item);
     setItemName(item.name || '');
     setItemTags(Array.isArray(item.tags) ? item.tags.join(', ') : (item.tags || ''));
+    setItemType(item.itemType || 'finished_good');
     setManufacturingPrice(item.manufacturingPrice != null ? String(item.manufacturingPrice) : '');
     setSellingPrice(item.sellingPrice != null ? String(item.sellingPrice) : '');
     setModalError('');
@@ -48,11 +56,13 @@ export default function ItemsSetup() {
       await api.createItem(token, {
         name: createName,
         tags: createTags,
+        itemType: createItemType,
         manufacturingPrice: Number(createMfgPrice || 0),
         sellingPrice: Number(createSellPrice || 0),
       });
       setCreateName('');
       setCreateTags('');
+      setCreateItemType('finished_good');
       setCreateMfgPrice('');
       setCreateSellPrice('');
       setError('');
@@ -67,6 +77,7 @@ export default function ItemsSetup() {
       await api.updateItem(token, editingItem._id, {
         name: itemName,
         tags: itemTags,
+        itemType,
         manufacturingPrice: Number(manufacturingPrice || 0),
         sellingPrice: Number(sellingPrice || 0),
       });
@@ -83,11 +94,14 @@ export default function ItemsSetup() {
 
   return (
     <Screen>
+      <PageHeader title="Item Management" backTo="/org/setup" />
       <Section title="Item Management" icon="ITM">
         {canManageItems ? (
           <>
             <label className="field-label">Item Name</label>
             <input className="input" value={createName} onChange={(e) => setCreateName(e.target.value)} placeholder="Item name" />
+            <div className="field-label">Item Type</div>
+            <Select value={createItemType} onChange={setCreateItemType} items={ITEM_TYPE_OPTIONS} />
             <label className="field-label">Tags</label>
             <input className="input" value={createTags} onChange={(e) => setCreateTags(e.target.value)} placeholder="Tags (comma separated)" />
             <label className="field-label">Manufacturing Price</label>
@@ -107,6 +121,11 @@ export default function ItemsSetup() {
           data={items}
           columns={[
             { key: 'name', title: 'Name' },
+            {
+              key: 'itemType',
+              title: 'Type',
+              render: (row) => (row.itemType === 'raw_material' ? 'Raw Material' : 'Finished Good'),
+            },
             { key: 'manufacturingPrice', title: 'MFG Price' },
             { key: 'sellingPrice', title: 'Sell Price' },
           ]}
@@ -118,6 +137,8 @@ export default function ItemsSetup() {
         <Modal title={`Edit Item: ${editingItem.name}`} onClose={closeModal}>
           <label className="field-label">Item Name</label>
           <input className="input" value={itemName} onChange={(e) => setItemName(e.target.value)} placeholder="Item name" />
+          <div className="field-label">Item Type</div>
+          <Select value={itemType} onChange={setItemType} items={ITEM_TYPE_OPTIONS} />
           <label className="field-label">Tags</label>
           <input className="input" value={itemTags} onChange={(e) => setItemTags(e.target.value)} placeholder="Tags (comma separated)" />
           <label className="field-label">Manufacturing Price</label>

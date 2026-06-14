@@ -1,74 +1,67 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { api } from '../../../api';
 import { useAuth } from '../../../auth/AuthContext';
 import { Modal, PageHeader, RecordList, Screen, Section } from '../../../components/ui';
 
-export default function CustomersSetup() {
+export default function VendorsSetup() {
   const { token, user } = useAuth();
-  const navigate = useNavigate();
-  const [customers, setCustomers] = useState([]);
-  const [editingCustomer, setEditingCustomer] = useState(null);
+  const [vendors, setVendors] = useState([]);
+  const [editingVendor, setEditingVendor] = useState(null);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
-  const [openingBalance, setOpeningBalance] = useState('');
   const [createName, setCreateName] = useState('');
   const [createPhone, setCreatePhone] = useState('');
   const [createEmail, setCreateEmail] = useState('');
   const [createAddress, setCreateAddress] = useState('');
-  const [createOpeningBalance, setCreateOpeningBalance] = useState('');
   const [error, setError] = useState('');
   const [modalError, setModalError] = useState('');
 
-  const canManageCustomers = ['admin', 'manager'].includes(user.role);
+  const canManage = ['admin', 'manager'].includes(user.role);
 
-  const loadCustomers = useCallback(async () => {
+  const loadVendors = useCallback(async () => {
     try {
-      const data = await api.getCustomers(token);
-      setCustomers(data);
+      const data = await api.getVendors(token);
+      setVendors(data);
       setError('');
     } catch (err) {
       setError(err.message);
     }
   }, [token]);
 
-  const openEdit = (customer) => {
-    setEditingCustomer(customer);
-    setName(customer.name || '');
-    setPhone(customer.phone || '');
-    setEmail(customer.email || '');
-    setAddress(customer.address || '');
-    setOpeningBalance(customer.openingBalance != null ? String(customer.openingBalance) : '0');
+  const openEdit = (vendor) => {
+    setEditingVendor(vendor);
+    setName(vendor.name || '');
+    setPhone(vendor.phone || '');
+    setEmail(vendor.email || '');
+    setAddress(vendor.address || '');
     setModalError('');
   };
 
   const closeModal = () => {
-    setEditingCustomer(null);
+    setEditingVendor(null);
     setModalError('');
   };
 
-  const createCustomer = async () => {
+  const createVendor = async () => {
     try {
       if (!createName) {
-        setError('Customer name is required');
+        setError('Vendor name is required');
         return;
       }
-      await api.createCustomer(token, {
+      await api.createVendor(token, {
         name: createName,
         phone: createPhone,
         email: createEmail,
         address: createAddress,
-        openingBalance: Number(createOpeningBalance || 0),
       });
       setCreateName('');
       setCreatePhone('');
       setCreateEmail('');
       setCreateAddress('');
-      setCreateOpeningBalance('');
       setError('');
-      await loadCustomers();
+      await loadVendors();
     } catch (err) {
       setError(err.message);
     }
@@ -77,103 +70,70 @@ export default function CustomersSetup() {
   const saveEdit = async () => {
     try {
       if (!name) {
-        setModalError('Customer name is required');
+        setModalError('Vendor name is required');
         return;
       }
-      await api.updateCustomer(token, editingCustomer._id, {
-        name,
-        phone,
-        email,
-        address,
-        openingBalance: Number(openingBalance || 0),
-      });
+      await api.updateVendor(token, editingVendor._id, { name, phone, email, address });
       closeModal();
-      await loadCustomers();
+      await loadVendors();
     } catch (err) {
       setModalError(err.message);
     }
   };
 
   useEffect(() => {
-    loadCustomers();
-  }, [loadCustomers]);
+    loadVendors();
+  }, [loadVendors]);
 
   return (
     <Screen>
-      <PageHeader title="Manage Customers" backTo="/org/setup" />
-      <Section title="Customers" icon="CST">
-        {canManageCustomers ? (
+      <PageHeader title="Manage Vendors" backTo="/org/setup" />
+      <Section title="Vendors" icon="CST">
+        {canManage ? (
           <>
             <label className="field-label">Name</label>
-            <input className="input" value={createName} onChange={(e) => setCreateName(e.target.value)} placeholder="Customer name" />
+            <input className="input" value={createName} onChange={(e) => setCreateName(e.target.value)} placeholder="Vendor name" />
             <label className="field-label">Phone</label>
             <input className="input" value={createPhone} onChange={(e) => setCreatePhone(e.target.value)} placeholder="Phone" />
             <label className="field-label">Email</label>
             <input className="input" value={createEmail} onChange={(e) => setCreateEmail(e.target.value)} placeholder="Email" />
             <label className="field-label">Address</label>
             <input className="input" value={createAddress} onChange={(e) => setCreateAddress(e.target.value)} placeholder="Address" />
-            <label className="field-label">Opening Balance</label>
-            <input
-              className="input"
-              value={createOpeningBalance}
-              onChange={(e) => setCreateOpeningBalance(e.target.value)}
-              placeholder="Opening balance"
-              type="number"
-            />
             <div className="actions-row">
-              <button className="btn" onClick={createCustomer}>Create Customer</button>
+              <button type="button" className="btn" onClick={createVendor}>Create Vendor</button>
             </div>
           </>
         ) : (
-          <div className="meta-text">Only admin/manager can create customers.</div>
+          <div className="meta-text">Only admin/manager can manage vendors.</div>
         )}
         {error ? <div className="meta-text">{error}</div> : null}
         <RecordList
-          title="Customer List"
-          data={customers}
+          title="Vendor List"
+          data={vendors}
           mobileLayout="cards"
           columns={[
             { key: 'name', title: 'Name' },
             { key: 'phone', title: 'Phone' },
             { key: 'email', title: 'Email' },
-            {
-              key: 'openingBalance',
-              title: 'Opening Balance',
-              render: (row) => Number(row.openingBalance || 0).toLocaleString(),
-            },
           ]}
           onRowPress={(item) => openEdit(item)}
         />
       </Section>
 
-      {editingCustomer && (
-        <Modal title={`Edit Customer: ${editingCustomer.name}`} onClose={closeModal}>
+      {editingVendor && (
+        <Modal title={`Edit Vendor: ${editingVendor.name}`} onClose={closeModal}>
           <label className="field-label">Name</label>
-          <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Customer name" />
+          <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Vendor name" />
           <label className="field-label">Phone</label>
           <input className="input" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone" />
           <label className="field-label">Email</label>
           <input className="input" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" />
           <label className="field-label">Address</label>
           <input className="input" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Address" />
-          <label className="field-label">Opening Balance</label>
-          <input
-            className="input"
-            value={openingBalance}
-            onChange={(e) => setOpeningBalance(e.target.value)}
-            placeholder="Opening balance"
-            type="number"
-          />
           {modalError ? <div className="meta-text" style={{ color: 'var(--danger)' }}>{modalError}</div> : null}
           <div className="actions-row">
-            <button className="btn" onClick={saveEdit}>Save Changes</button>
-            <button
-              className="btn secondary"
-              onClick={() => navigate(`/org/customers/${editingCustomer._id}`)}
-            >
-              View Account
-            </button>
-            <button className="btn ghost" onClick={closeModal}>Cancel</button>
+            <button type="button" className="btn" onClick={saveEdit}>Save Changes</button>
+            <button type="button" className="btn ghost" onClick={closeModal}>Cancel</button>
           </div>
         </Modal>
       )}

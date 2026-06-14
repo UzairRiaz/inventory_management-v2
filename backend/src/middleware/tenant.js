@@ -1,3 +1,5 @@
+import mongoose from 'mongoose';
+
 export function requireTenant(req, res, next) {
   const organizationId = req.auth?.organizationId || req.header('x-org-id');
   const userId = req.auth?.sub || req.header('x-user-id');
@@ -16,7 +18,7 @@ export function requireTenant(req, res, next) {
 
 export function withTenantFilter(req, extra = {}) {
   return {
-    organization: req.tenant.organizationId,
+    organization: new mongoose.Types.ObjectId(req.tenant.organizationId),
     ...extra,
   };
 }

@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../api';
 import { useAuth } from '../../auth/AuthContext';
-import { Modal, RecordDetailModal, RecordList, Screen, Section, Select } from '../../components/ui';
+import { Modal, PageHeader, RecordDetailModal, RecordList, Screen, Section } from '../../components/ui';
 
 function SaleEditModal({ sale, token, onClose, onSaved }) {
   const [customers, setCustomers] = useState([]);
@@ -228,14 +228,16 @@ export default function Sales() {
 
   return (
     <Screen>
+      <PageHeader title="Sales" backTo="/org/setup" />
       <Section title="Sales" icon="SAL">
         <div className="actions-row">
-          <button className="btn" onClick={() => navigate('/org/sales/new')}>New Sale</button>
+          <button className="btn" onClick={() => navigate('/org/setup/sales/new')}>New Sale</button>
         </div>
         {error ? <div className="meta-text">{error}</div> : null}
         <RecordList
           title="Sales"
           data={sales}
+          mobileLayout="cards"
           columns={[
             { key: 'customerName', title: 'Customer', render: (sale) => sale.customer?.name || sale.customerName },
             { key: 'soldAt', title: 'Date' },

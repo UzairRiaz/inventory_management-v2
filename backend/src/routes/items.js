@@ -12,7 +12,11 @@ router.use(requireTenant);
 
 router.get('/', requireRoles('admin', 'manager', 'staff'), async (req, res, next) => {
   try {
-    const items = await Item.find(withTenantFilter(req)).sort({ name: 1 });
+    const filter = withTenantFilter(req, {});
+    if (req.query.itemType) {
+      filter.itemType = req.query.itemType;
+    }
+    const items = await Item.find(filter).sort({ name: 1 });
     res.json(items);
   } catch (error) {
     next(error);
@@ -33,6 +37,7 @@ router.post('/', requireRoles('admin', 'manager'), async (req, res, next) => {
       name: req.body.name,
       sku: req.body.sku,
       tags,
+      itemType: req.body.itemType === 'raw_material' ? 'raw_material' : 'finished_good',
       manufacturingPrice: Number(req.body.manufacturingPrice || 0),
       sellingPrice: Number(req.body.sellingPrice || 0),
     });
@@ -66,6 +71,9 @@ router.put('/:id', requireRoles('admin', 'manager'), async (req, res, next) => {
           }),
           ...(req.body.manufacturingPrice !== undefined && { manufacturingPrice: Number(req.body.manufacturingPrice) }),
           ...(req.body.sellingPrice !== undefined && { sellingPrice: Number(req.body.sellingPrice) }),
+          ...(req.body.itemType !== undefined && {
+            itemType: req.body.itemType === 'raw_material' ? 'raw_material' : 'finished_good',
+          }),
         },
       },
       { new: true },

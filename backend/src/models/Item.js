@@ -11,6 +11,11 @@ const itemSchema = new mongoose.Schema(
     name: { type: String, required: true, trim: true },
     sku: { type: String, trim: true },
     tags: [{ type: String, trim: true }],
+    itemType: {
+      type: String,
+      enum: ['finished_good', 'raw_material'],
+      default: 'finished_good',
+    },
     manufacturingPrice: { type: Number, required: true, min: 0 },
     sellingPrice: { type: Number, required: true, min: 0 },
   },

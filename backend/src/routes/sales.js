@@ -305,7 +305,7 @@ router.get('/credits/outstanding-by-customer', requireRoles('admin', 'manager', 
   try {
     const match = withTenantFilter(req, {
       paymentType: 'credit',
-      // remainingAmount: { $gt: 0 },
+      remainingAmount: { $gt: 0 },
     });
 
     const organization = new mongoose.Types.ObjectId(req.tenant.organizationId);
@@ -373,15 +373,18 @@ router.get('/credits/outstanding-by-customer', requireRoles('admin', 'manager', 
           customerName: customer.name,
           openingBalance: Number(customer.openingBalance || 0),
           totalOutstanding: Number(customer.openingBalance || 0),
+          totalRemaining: Number(customer.openingBalance || 0),
           totalSales: 0,
           lastSaleDate: null,
         });
       }
     }
 
-    merged.sort((a, b) => Number(b.totalOutstanding || 0) - Number(a.totalOutstanding || 0));
+    const withOutstanding = merged.filter((row) => Number(row.totalOutstanding || 0) > 0);
 
-    res.json(merged);
+    withOutstanding.sort((a, b) => Number(b.totalOutstanding || 0) - Number(a.totalOutstanding || 0));
+
+    res.json(withOutstanding);
   } catch (error) {
     next(error);
   }
