@@ -238,6 +238,7 @@ export default function CustomerAccount() {
             data={account?.sales || []}
             loading={loading}
             mobileLayout="cards"
+            cardVariant="sale"
             emptyTitle="No sales yet"
             emptyActionLabel="New Sale"
             onEmptyAction={newSale}
@@ -269,7 +270,9 @@ export default function CustomerAccount() {
             data={account?.payments || []}
             loading={loading}
             mobileLayout="cards"
+            cardVariant="payment"
             emptyTitle="No payments yet"
+            emptyMessage="Payments against opening balance and credit sales appear here."
             emptyActionLabel="Receive Payment"
             onEmptyAction={receivePayment}
             columns={[

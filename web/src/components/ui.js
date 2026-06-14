@@ -17,9 +17,9 @@ function looksLikeDateTime(value) {
   return false;
 }
 
-function formatLocalDateTime(value) {
+export function formatDateTime(value) {
   const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return value;
+  if (Number.isNaN(parsed.getTime())) return value || '-';
 
   return parsed.toLocaleString(undefined, {
     year: 'numeric',
@@ -28,6 +28,10 @@ function formatLocalDateTime(value) {
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+
+function formatLocalDateTime(value) {
+  return formatDateTime(value);
 }
 
 function formatPrimitiveValue(value) {
@@ -75,22 +79,6 @@ function formatComplexValue(value, prefix = '') {
 
 export function Screen({ children }) {
   return <div className="content-wrap">{children}</div>;
-}
-
-function useIsMobile(breakpoint = 600) {
-  const [isMobile, setIsMobile] = useState(() =>
-    typeof window !== 'undefined' ? window.matchMedia(`(max-width: ${breakpoint}px)`).matches : false
-  );
-
-  useEffect(() => {
-    const media = window.matchMedia(`(max-width: ${breakpoint}px)`);
-    const onChange = () => setIsMobile(media.matches);
-    onChange();
-    media.addEventListener('change', onChange);
-    return () => media.removeEventListener('change', onChange);
-  }, [breakpoint]);
-
-  return isMobile;
 }
 
 export function PageHeader({ title, backTo }) {
@@ -306,6 +294,69 @@ export function Section({ title, icon, children }) {
   );
 }
 
+function paymentKindBadge(item) {
+  if (item.type === 'opening_balance_payment' || item.paymentKind === 'Opening Balance') {
+    return <Badge variant="warning">Opening Balance</Badge>;
+  }
+  return <Badge variant="success">Credit Sale</Badge>;
+}
+
+function renderPaymentCard(item, index, onRowPress) {
+  const rowKey = item._id || item.paymentId || item.saleId || item.id || index;
+  return (
+    <button
+      type="button"
+      key={rowKey}
+      className={`record-card record-card-payment${onRowPress ? ' record-card-tappable' : ''}`}
+      onClick={onRowPress ? () => onRowPress(item) : undefined}
+    >
+      <div className="record-card-header">
+        <div className="record-card-header-main">
+          <div className="record-card-amount">{formatMoney(item.paymentAmount)}</div>
+          {paymentKindBadge(item)}
+        </div>
+        {onRowPress ? <span className="record-card-chevron">›</span> : null}
+      </div>
+      <div className="record-card-footer">
+        {item.customerName ? <span className="record-card-meta">{item.customerName}</span> : null}
+        <span className="record-card-meta">{formatDateTime(item.paymentDate)}</span>
+        {item.note ? <span className="record-card-note">{item.note}</span> : null}
+      </div>
+    </button>
+  );
+}
+
+function renderSaleCard(item, index, onRowPress) {
+  const rowKey = item._id || item.saleId || item.id || index;
+  const remaining = Number(item.remainingAmount || 0);
+  return (
+    <button
+      type="button"
+      key={rowKey}
+      className={`record-card record-card-sale${onRowPress ? ' record-card-tappable' : ''}`}
+      onClick={onRowPress ? () => onRowPress(item) : undefined}
+    >
+      <div className="record-card-header">
+        <div className="record-card-header-main">
+          <div className="record-card-amount">{formatMoney(item.sellingTotal)}</div>
+          {paymentTypeBadge(item.paymentType)}
+        </div>
+        {onRowPress ? <span className="record-card-chevron">›</span> : null}
+      </div>
+      <div className="record-card-footer">
+        <span className="record-card-meta">{formatDateTime(item.soldAt)}</span>
+        {remaining > 0 ? (
+          <span className="record-card-meta record-card-meta-highlight">
+            Remaining {formatMoney(remaining)}
+          </span>
+        ) : (
+          <span className="record-card-meta record-card-meta-paid">Paid in full</span>
+        )}
+      </div>
+    </button>
+  );
+}
+
 export function RecordList({
   title,
   data,
@@ -314,6 +365,7 @@ export function RecordList({
   onRowPress,
   itemsPerPage = 20,
   mobileLayout,
+  cardVariant,
   loading,
   emptyTitle,
   emptyMessage,
@@ -321,8 +373,7 @@ export function RecordList({
   onEmptyAction,
 }) {
   const [page, setPage] = useState(1);
-  const isMobile = useIsMobile();
-  const useCards = mobileLayout === 'cards' && isMobile;
+  const useCards = mobileLayout === 'cards';
 
   const totalPages = Math.max(1, Math.ceil(data.length / itemsPerPage));
   const start = (page - 1) * itemsPerPage;
@@ -360,6 +411,13 @@ export function RecordList({
           {useCards ? (
             <div className="card-list record-card-list">
               {pagedData.map((item, index) => {
+                if (cardVariant === 'payment') {
+                  return renderPaymentCard(item, index, onRowPress);
+                }
+                if (cardVariant === 'sale') {
+                  return renderSaleCard(item, index, onRowPress);
+                }
+
                 const rowKey = item._id || item.saleId || item.itemId || item.id || index;
                 const primaryValue = cardPrimaryColumn.render
                   ? cardPrimaryColumn.render(item)
@@ -427,15 +485,17 @@ export function RecordList({
               </table>
             </div>
           )}
-          <div className="pagination">
-            <button className="btn ghost" onClick={() => setPage((prev) => Math.max(1, prev - 1))} disabled={page <= 1}>
-              Prev
-            </button>
-            <div className="meta-text">Page {page} of {totalPages}</div>
-            <button className="btn ghost" onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))} disabled={page >= totalPages}>
-              Next
-            </button>
-          </div>
+          {totalPages > 1 ? (
+            <div className="pagination">
+              <button className="btn ghost" onClick={() => setPage((prev) => Math.max(1, prev - 1))} disabled={page <= 1}>
+                Prev
+              </button>
+              <div className="meta-text">Page {page} of {totalPages}</div>
+              <button className="btn ghost" onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))} disabled={page >= totalPages}>
+                Next
+              </button>
+            </div>
+          ) : null}
         </>
       )}
     </div>

@@ -201,6 +201,7 @@ export default function Home() {
               title="Recent Payments"
               data={recentPayments}
               mobileLayout="cards"
+              cardVariant="payment"
               columns={[
                 { key: 'paymentDate', title: 'Date' },
                 { key: 'customerName', title: 'Customer' },

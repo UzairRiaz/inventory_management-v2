@@ -634,6 +634,58 @@ img, svg, .section, .card, .nav-tabs {
   text-align: right;
 }
 
+.record-card-payment,
+.record-card-sale {
+  text-align: left;
+}
+
+.record-card-header-main {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.record-card-amount {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.record-card-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.record-card-meta {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.record-card-meta-highlight {
+  color: #9a3412;
+  font-weight: 600;
+}
+
+.record-card-meta-paid {
+  color: #166534;
+  font-weight: 600;
+}
+
+.record-card-note {
+  font-size: 12px;
+  color: #64748b;
+  font-style: italic;
+}
+
 .sticky-action-bar {
   position: sticky;
   bottom: calc(72px + env(safe-area-inset-bottom, 0px));
