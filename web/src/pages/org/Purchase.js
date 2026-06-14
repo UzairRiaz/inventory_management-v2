@@ -92,7 +92,7 @@ function PurchaseModal({ purchase, onClose, onRefresh, canEdit }) {
         <>
           <table className="detail-table">
             <tbody>
-              <tr><td>Item</td><td>{purchase.item?.name || '-'}</td></tr>
+              <tr><td>{purchase.purchaseCategory === 'raw_material' ? 'Raw Material' : 'Item'}</td><td>{purchase.item?.name || '-'}</td></tr>
               <tr><td>Warehouse</td><td>{purchase.warehouse?.name || '-'}</td></tr>
               <tr><td>Quantity</td><td>{purchase.quantity}</td></tr>
               <tr><td>Unit Price</td><td>{purchase.unitPrice}</td></tr>
@@ -256,6 +256,7 @@ export default function Purchase() {
   const [items, setItems] = useState([]);
   const [warehouseId, setWarehouseId] = useState('');
   const [itemId, setItemId] = useState('');
+  const [rawMaterialName, setRawMaterialName] = useState('');
   const [quantity, setQuantity] = useState('');
   const [purchasePrice, setPurchasePrice] = useState('');
   const [supplier, setSupplier] = useState('');
@@ -287,26 +288,31 @@ export default function Purchase() {
 
   const loadOptions = useCallback(async () => {
     try {
-      const itemType = purchaseCategory === 'raw_material' ? 'raw_material' : 'finished_good';
-      const [warehouseData, itemData, purchaseData, vendorData] = await Promise.all([
+      const [warehouseData, purchaseData, vendorData] = await Promise.all([
         api.getWarehouses(token),
-        api.getItems(token, itemType),
         api.getPurchases(token),
         api.getVendors(token),
       ]);
+      const itemData =
+        purchaseCategory === 'item'
+          ? await api.getItems(token, 'finished_good')
+          : [];
+
       setWarehouses(warehouseData);
       setItems(itemData);
       setPurchases(purchaseData);
       setVendors(vendorData);
 
       if (!warehouseId && warehouseData[0]?._id) setWarehouseId(warehouseData[0]._id);
-      const nextItem = itemData[0];
-      if (nextItem?._id) {
-        setItemId(nextItem._id);
-        setPurchasePrice(String(nextItem.manufacturingPrice ?? ''));
-      } else {
-        setItemId('');
-        setPurchasePrice('');
+      if (purchaseCategory === 'item') {
+        const nextItem = itemData[0];
+        if (nextItem?._id) {
+          setItemId(nextItem._id);
+          setPurchasePrice(String(nextItem.manufacturingPrice ?? ''));
+        } else {
+          setItemId('');
+          setPurchasePrice('');
+        }
       }
       if (!vendorId && vendorData[0]?._id && purchaseCategory === 'raw_material') {
         setVendorId(vendorData[0]._id);
@@ -327,8 +333,16 @@ export default function Purchase() {
     setError('');
     setSuccess('');
 
-    if (!warehouseId || !itemId) {
-      setError('Please select a warehouse and an item');
+    if (!warehouseId) {
+      setError('Please select a warehouse');
+      return;
+    }
+    if (purchaseCategory === 'item' && !itemId) {
+      setError('Please select an item');
+      return;
+    }
+    if (purchaseCategory === 'raw_material' && !rawMaterialName.trim()) {
+      setError('Please enter a raw material name');
       return;
     }
     if (purchaseCategory === 'raw_material' && !vendorId) {
@@ -345,7 +359,8 @@ export default function Purchase() {
     try {
       await api.createPurchase(token, {
         warehouseId,
-        itemId,
+        itemId: purchaseCategory === 'item' ? itemId : undefined,
+        rawMaterialName: purchaseCategory === 'raw_material' ? rawMaterialName.trim() : undefined,
         quantity: qty,
         unitPrice: purchasePrice !== '' ? Number(purchasePrice) : 0,
         purchaseCategory,
@@ -364,6 +379,7 @@ export default function Purchase() {
       setSuccess(`Purchase recorded — ${qty} units added to stock (${label}).`);
       setQuantity('');
       setSupplier('');
+      setRawMaterialName('');
       setNote('');
       setPurchasedAt('');
       setPaymentType('cash');
@@ -385,12 +401,13 @@ export default function Purchase() {
   const handleCategoryChange = (category) => {
     setPurchaseCategory(category);
     setItemId('');
+    setRawMaterialName('');
     setPurchasePrice('');
     setSupplier('');
     if (category === 'item') setVendorId('');
   };
 
-  const selectedItem = items.find((i) => i._id === itemId);
+  const selectedItem = purchaseCategory === 'item' ? items.find((i) => i._id === itemId) : null;
   const qty = Number(quantity || 0);
   const price = Number(purchasePrice || 0);
   const estimatedTotal = qty > 0 && price > 0 ? qty * price : null;
@@ -420,25 +437,38 @@ export default function Purchase() {
               items={warehouses.map((w) => ({ label: w.name, value: w._id }))}
             />
 
-            <div className="field-label">{purchaseCategory === 'raw_material' ? 'Raw Material' : 'Item'}</div>
-            <Select
-              value={itemId}
-              onChange={handleItemChange}
-              placeholder={purchaseCategory === 'raw_material' ? 'Select raw material' : 'Select item'}
-              items={items.map((i) => ({ label: i.name, value: i._id }))}
-            />
+            {purchaseCategory === 'raw_material' ? (
+              <>
+                <label className="field-label">Raw Material Name</label>
+                <input
+                  className="input"
+                  value={rawMaterialName}
+                  onChange={(e) => setRawMaterialName(e.target.value)}
+                  placeholder="e.g. Cotton fabric, Steel rods"
+                />
+              </>
+            ) : (
+              <>
+                <div className="field-label">Item</div>
+                <Select
+                  value={itemId}
+                  onChange={handleItemChange}
+                  placeholder="Select item"
+                  items={items.map((i) => ({ label: i.name, value: i._id }))}
+                />
 
-            {items.length === 0 ? (
-              <div className="meta-text">
-                No {purchaseCategory === 'raw_material' ? 'raw materials' : 'finished items'} found.
-                Add them in Setup → Items.
-              </div>
-            ) : null}
+                {items.length === 0 ? (
+                  <div className="meta-text">
+                    No finished items found. Add them in Setup → Items.
+                  </div>
+                ) : null}
 
-            {selectedItem && (
-              <div className="meta-text" style={{ marginBottom: 4 }}>
-                Current MFG price: {selectedItem.manufacturingPrice ?? '-'} &nbsp;|&nbsp; Selling price: {selectedItem.sellingPrice ?? '-'}
-              </div>
+                {selectedItem && (
+                  <div className="meta-text" style={{ marginBottom: 4 }}>
+                    Current MFG price: {selectedItem.manufacturingPrice ?? '-'} &nbsp;|&nbsp; Selling price: {selectedItem.sellingPrice ?? '-'}
+                  </div>
+                )}
+              </>
             )}
 
             <label className="field-label">Quantity</label>

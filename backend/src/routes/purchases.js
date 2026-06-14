@@ -52,6 +52,7 @@ router.post('/', requireRoles('admin', 'manager'), async (req, res, next) => {
     const {
       warehouseId,
       itemId,
+      rawMaterialName,
       quantity,
       unitPrice,
       supplier,
@@ -63,35 +64,60 @@ router.post('/', requireRoles('admin', 'manager'), async (req, res, next) => {
     } = req.body;
 
     const qty = Number(quantity || 0);
-    if (!warehouseId || !itemId || qty <= 0) {
-      return res.status(400).json({ message: 'warehouseId, itemId, and quantity (>0) are required' });
+    if (!warehouseId || qty <= 0) {
+      return res.status(400).json({ message: 'warehouseId and quantity (>0) are required' });
     }
 
     const category = purchaseCategory === 'raw_material' ? 'raw_material' : 'item';
-    const expectedItemType = category === 'raw_material' ? 'raw_material' : 'finished_good';
 
     if (category === 'raw_material' && !vendorId) {
       return res.status(400).json({ message: 'vendorId is required for raw material purchases' });
     }
 
-    const [warehouse, item, vendor] = await Promise.all([
+    if (category === 'item' && !itemId) {
+      return res.status(400).json({ message: 'itemId is required for finished item purchases' });
+    }
+
+    const materialName = String(rawMaterialName || '').trim();
+    if (category === 'raw_material' && !materialName) {
+      return res.status(400).json({ message: 'rawMaterialName is required for raw material purchases' });
+    }
+
+    const [warehouse, vendor] = await Promise.all([
       Warehouse.findOne({ _id: warehouseId, organization }),
-      Item.findOne({ _id: itemId, organization }),
       vendorId ? Vendor.findOne({ _id: vendorId, organization }) : Promise.resolve(null),
     ]);
 
     if (!warehouse) return res.status(404).json({ message: 'Warehouse not found for tenant' });
-    if (!item) return res.status(404).json({ message: 'Item not found for tenant' });
     if (vendorId && !vendor) return res.status(404).json({ message: 'Vendor not found for tenant' });
 
-    const itemType = item.itemType || 'finished_good';
-    if (itemType !== expectedItemType) {
-      return res.status(400).json({
-        message:
-          category === 'raw_material'
-            ? 'Selected item must be a raw material'
-            : 'Selected item must be a finished good',
-      });
+    let item;
+    let resolvedItemId = itemId;
+
+    if (category === 'raw_material') {
+      item = await Item.findOne({ organization, name: materialName });
+      if (item && (item.itemType || 'finished_good') !== 'raw_material') {
+        return res.status(400).json({ message: 'An item with this name already exists as a finished good' });
+      }
+      if (!item) {
+        const price = Number(unitPrice || 0);
+        item = await Item.create({
+          organization,
+          name: materialName,
+          itemType: 'raw_material',
+          manufacturingPrice: price,
+          sellingPrice: 0,
+        });
+      }
+      resolvedItemId = item._id;
+    } else {
+      item = await Item.findOne({ _id: itemId, organization });
+      if (!item) return res.status(404).json({ message: 'Item not found for tenant' });
+
+      const itemType = item.itemType || 'finished_good';
+      if (itemType !== 'finished_good') {
+        return res.status(400).json({ message: 'Selected item must be a finished good' });
+      }
     }
 
     const supplierName = vendor?.name || supplier || '';
@@ -109,8 +135,8 @@ router.post('/', requireRoles('admin', 'manager'), async (req, res, next) => {
 
     // Adjust stock (upsert then increment)
     const stock = await Stock.findOneAndUpdate(
-      { organization, warehouse: warehouseId, item: itemId },
-      { $setOnInsert: { organization, warehouse: warehouseId, item: itemId, quantity: 0 } },
+      { organization, warehouse: warehouseId, item: resolvedItemId },
+      { $setOnInsert: { organization, warehouse: warehouseId, item: resolvedItemId, quantity: 0 } },
       { new: true, upsert: true },
     );
     stock.quantity = stock.quantity + qty;
@@ -122,7 +148,7 @@ router.post('/', requireRoles('admin', 'manager'), async (req, res, next) => {
     const purchase = await Purchase.create({
       organization,
       warehouse: warehouseId,
-      item: itemId,
+      item: resolvedItemId,
       purchaseCategory: category,
       vendor: vendor?._id,
       quantity: qty,
@@ -148,7 +174,7 @@ router.post('/', requireRoles('admin', 'manager'), async (req, res, next) => {
     });
 
     await logActivity(req, 'PURCHASE_CREATE', 'Purchase', purchase._id, {
-      itemId,
+      itemId: resolvedItemId,
       itemName: item.name,
       purchaseCategory: category,
       quantity: qty,
